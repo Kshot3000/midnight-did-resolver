@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ManagerConfig } from '../config.js';
 import { DidManagerService } from '../manager.js';
-import { seedHashPrefix } from '../wallet-state-store.js';
+import { seedHashPrefix, walletStateDir } from '../wallet-state-store.js';
 
 const apiMockState = vi.hoisted(() => ({
   networkConfigured: false,
@@ -62,8 +62,8 @@ const createConfig = (dataDir: string): ManagerConfig => ({
   sessionIdleMs: 60_000,
   rememberUnlockedSessionDefault: true,
   standalone: {
-    indexer: 'http://127.0.0.1:8088/api/v3/graphql',
-    indexerWS: 'ws://127.0.0.1:8088/api/v3/graphql/ws',
+    indexer: 'http://127.0.0.1:8088/api/v4/graphql',
+    indexerWS: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
     node: 'http://127.0.0.1:9944',
     proofServer: 'http://127.0.0.1:6300',
   },
@@ -304,6 +304,26 @@ describe('DidManagerService', () => {
     expect(status.unlocked).toBe(false);
     expect(status.connection.phase).toBe('error');
     expect(status.connection.lastError).toContain('simulated wallet bootstrap failure');
+  });
+
+  it('terminates startup safely when an incompatible cache cannot be backed up', async () => {
+    const manager = new DidManagerService(createConfig(dataDir), pino({ enabled: false }));
+    const seed = 'a'.repeat(64);
+    await manager.prepareFunding({ seedMode: 'provided', seed });
+    const cache = walletStateDir(dataDir, 'preprod', 'default', seedHashPrefix(seed));
+    await mkdir(cache, { recursive: true });
+    const oldMeta = JSON.stringify({ version: 2, walletSchema: 'ledger8' });
+    await writeFile(path.join(cache, 'meta.json'), oldMeta);
+    await writeFile(path.join(dataDir, 'backup'), 'not-a-directory');
+    await manager.unlock({ seedMode: 'reuse', passphrase: 'test-passphrase' });
+    const task = (manager as any).runtime.getUnlockTask() as Promise<void> | null;
+    expect(task).not.toBeNull();
+    await expect(task).resolves.toBeUndefined();
+    expect((await manager.getSessionStatus()).connection.phase).toBe('error');
+    expect(api.buildWallet).not.toHaveBeenCalled();
+    expect(api.restoreWalletFromState).not.toHaveBeenCalled();
+    expect(api.serializeWalletState).not.toHaveBeenCalled();
+    expect(await readFile(path.join(cache, 'meta.json'), 'utf8')).toBe(oldMeta);
   });
 
   it('prepares generated funding and rejects start session when seedMode=generated', async () => {

@@ -7,8 +7,8 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 # Local defaults; caller can override via environment.
 export RESOLVER_HOST="${RESOLVER_HOST:-127.0.0.1}"
 export RESOLVER_PORT="${RESOLVER_PORT:-3001}"
-export MIDNIGHT_INDEXER_HTTP_URL="${MIDNIGHT_INDEXER_HTTP_URL:-http://127.0.0.1:8088/api/v3/graphql}"
-export MIDNIGHT_INDEXER_WS_URL="${MIDNIGHT_INDEXER_WS_URL:-ws://127.0.0.1:8088/api/v3/graphql/ws}"
+export MIDNIGHT_INDEXER_HTTP_URL="${MIDNIGHT_INDEXER_HTTP_URL:-http://127.0.0.1:8088/api/v4/graphql}"
+export MIDNIGHT_INDEXER_WS_URL="${MIDNIGHT_INDEXER_WS_URL:-ws://127.0.0.1:8088/api/v4/graphql/ws}"
 
 cd "$REPO_ROOT"
 

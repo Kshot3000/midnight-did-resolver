@@ -35,8 +35,8 @@ describe("did-resolver-service startup", () => {
     loadConfigMock.mockReturnValue({
       host: "0.0.0.0",
       port: 13001,
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       expectedNetwork: "preprod",
       debug: true,
       enableDocs: true,
@@ -48,8 +48,8 @@ describe("did-resolver-service startup", () => {
     await start();
 
     expect(resolverCtorMock).toHaveBeenCalledWith({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       expectedNetwork: "preprod",
       debug: true,
       resolveTimeoutMs: 15000,

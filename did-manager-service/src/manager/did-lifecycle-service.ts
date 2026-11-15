@@ -14,6 +14,7 @@ import {
 import type { Logger } from 'pino';
 
 import type { SetupProfile } from '../config.js';
+import { classifyManagerHttpError } from '../errors.js';
 import type { DidDocumentResponse, DidStateResponse, StoredContractStatus } from '../types.js';
 import { withTimeout } from './helpers.js';
 
@@ -75,7 +76,7 @@ export const listStoredContracts = async (input: {
           deactivated: null,
           version: null,
           operationCount: null,
-          message: error instanceof Error ? error.message : 'Stored contract check failed.',
+          message: classifyManagerHttpError(error).message,
         } satisfies StoredContractStatus;
       }
     }),

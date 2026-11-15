@@ -37,6 +37,12 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      - name: Validate published DID references and types
+        run: npm run check:did-libs && npm ls --all && npm run typecheck:all
+
+      - name: Verify public DID rc1 ZK artifacts
+        run: npm run smoke:did-zk-release-artifacts
+
       - name: Run light strict validation
         run: ./run.sh --light --strict
 

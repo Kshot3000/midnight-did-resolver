@@ -432,16 +432,17 @@ export class DidManagerService {
       'Using isolated Midnight private state store',
     );
 
-    let persistedWalletState = await this.restorePersistedWalletState(seedHash);
-    if (!this.isUnlockGenerationCurrent(generation)) return;
-    let reusedPersistedState = persistedWalletState !== null;
-    this.setConnectionState(
-      persistedWalletState === null ? 'starting' : 'restoring',
-      { lastError: null, reusedPersistedState, seedHash },
-    );
-
     let walletCtx: api.MidnightDIDWalletContext | null = null;
     try {
+      // Quarantine I/O can fail intentionally. Keep it inside the guarded
+      // unlock lifecycle so backup failure is terminal, not an unhandled task.
+      let persistedWalletState = await this.restorePersistedWalletState(seedHash);
+      if (!this.isUnlockGenerationCurrent(generation)) return;
+      let reusedPersistedState = persistedWalletState !== null;
+      this.setConnectionState(
+        persistedWalletState === null ? 'starting' : 'restoring',
+        { lastError: null, reusedPersistedState, seedHash },
+      );
       if (persistedWalletState === null) {
         walletCtx = await api.buildWallet(config, seed);
       } else {

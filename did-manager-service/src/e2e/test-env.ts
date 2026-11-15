@@ -1,5 +1,5 @@
 import { type ChildProcess, execFile, spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,8 @@ const managerDir = path.resolve(currentDir, '../..');
 const rootDir = path.resolve(managerDir, '..');
 const infrastructureDir = path.resolve(rootDir, 'infrastructure');
 const managerEntry = path.resolve(managerDir, 'dist/index.js');
-const composeArgs = ['compose', '-f', 'standalone.yml'];
+const composeProject = `did-manager-e2e-${process.pid}-${Date.now()}`;
+const composeArgs = ['compose', '-p', composeProject, '-f', 'standalone.yml'];
 
 const fundedSeed = '0000000000000000000000000000000000000000000000000000000000000001';
 
@@ -59,26 +60,14 @@ const dockerCompose = async (...args: string[]): Promise<string> => {
   return `${stdout}${stderr}`.trim();
 };
 
-const removeStandaloneContainers = async (): Promise<void> => {
-  const containerNames = ['did-node', 'did-indexer', 'did-proof-server'];
-  await execFileAsync(
-    'docker',
-    ['rm', '-f', ...containerNames],
-    {
-      cwd: rootDir,
-      env: process.env,
-    },
-  ).catch(() => undefined);
-};
-
-const resolveDockerPort = async (containerName: string, containerPort: string): Promise<number> => {
+const resolveDockerPort = async (serviceName: string, containerPort: string): Promise<number> => {
   const deadline = Date.now() + 30_000;
   let lastOutput = '';
 
   while (Date.now() < deadline) {
     try {
-      const { stdout } = await execFileAsync('docker', ['port', containerName, containerPort], {
-        cwd: rootDir,
+      const { stdout } = await execFileAsync('docker', [...composeArgs, 'port', serviceName, containerPort], {
+        cwd: infrastructureDir,
         env: process.env,
       });
       lastOutput = stdout;
@@ -92,7 +81,7 @@ const resolveDockerPort = async (containerName: string, containerPort: string): 
       }
       const match = line.match(/:(\d+)\s*$/);
       if (match === null) {
-        throw new Error(`Unexpected docker port output for ${containerName}:${containerPort}: ${line}`);
+        throw new Error(`Unexpected docker port output for ${serviceName}:${containerPort}: ${line}`);
       }
       return Number(match[1]);
     } catch {
@@ -100,13 +89,13 @@ const resolveDockerPort = async (containerName: string, containerPort: string): 
     }
   }
 
-  throw new Error(`No mapped port found for ${containerName}:${containerPort}. Last output: ${lastOutput}`);
+  throw new Error(`No mapped port found for ${serviceName}:${containerPort}. Last output: ${lastOutput}`);
 };
 
 const resolveStandalonePorts = async (): Promise<Record<PortName, number>> => ({
-  node: await resolveDockerPort('did-node', '9944/tcp'),
-  indexer: await resolveDockerPort('did-indexer', '8088/tcp'),
-  'proof-server': await resolveDockerPort('did-proof-server', '6300/tcp'),
+  node: await resolveDockerPort('node', '9944'),
+  indexer: await resolveDockerPort('indexer', '8088'),
+  'proof-server': await resolveDockerPort('proof-server', '6300'),
 });
 
 const waitForPortAvailable = async (port: number): Promise<void> => {
@@ -243,6 +232,9 @@ const startManagerProcess = async ({ dataDir, env = {} }: ManagerProcessOptions)
     },
     stop: async () => {
       await stopProcess(child);
+      const diagnosticsDir = path.resolve(managerDir, 'test-results');
+      await mkdir(diagnosticsDir, { recursive: true });
+      await writeFile(path.join(diagnosticsDir, 'manager-runtime.log'), managerLogs(), 'utf8');
       if (removeDataDirOnStop) {
         await rm(resolvedDataDir, { recursive: true, force: true }).catch(() => undefined);
       }
@@ -251,38 +243,43 @@ const startManagerProcess = async ({ dataDir, env = {} }: ManagerProcessOptions)
 };
 
 export const startManagerE2EEnv = async (): Promise<ManagerE2EEnv> => {
-  await removeStandaloneContainers();
-  await dockerCompose('down', '--volumes', '--remove-orphans');
-  await dockerCompose('up', '-d');
+  try {
+    // Own a unique project; never remove a developer's fixed-name containers.
+    await dockerCompose('up', '-d', '--wait', '--wait-timeout', '600');
 
-  const standalonePorts = await resolveStandalonePorts();
-  await waitForHttp(`http://127.0.0.1:${standalonePorts.node}/health`, (response) => response.ok, 'standalone node');
-  await waitForHttp(
-    `http://127.0.0.1:${standalonePorts.indexer}/api/v3/graphql`,
-    (response) => response.status < 500,
-    'standalone indexer',
-  );
-  await waitForHttp(
-    `http://127.0.0.1:${standalonePorts['proof-server']}/version`,
-    (response) => response.ok,
-    'proof server',
-  );
-  const manager = await startManagerProcess({
-    env: {
-      DID_MANAGER_STANDALONE_NODE: `http://127.0.0.1:${standalonePorts.node}`,
-      DID_MANAGER_STANDALONE_INDEXER: `http://127.0.0.1:${standalonePorts.indexer}/api/v3/graphql`,
-      DID_MANAGER_STANDALONE_INDEXER_WS: `ws://127.0.0.1:${standalonePorts.indexer}/api/v3/graphql/ws`,
-      DID_MANAGER_STANDALONE_PROOF_SERVER: `http://127.0.0.1:${standalonePorts['proof-server']}`,
-    },
-  });
+    const standalonePorts = await resolveStandalonePorts();
+    await waitForHttp(`http://127.0.0.1:${standalonePorts.node}/health`, (response) => response.ok, 'standalone node');
+    await waitForHttp(
+      `http://127.0.0.1:${standalonePorts.indexer}/api/v4/graphql`,
+      (response) => response.status < 500,
+      'standalone indexer',
+    );
+    await waitForHttp(
+      `http://127.0.0.1:${standalonePorts['proof-server']}/version`,
+      (response) => response.ok,
+      'proof server',
+    );
+    const manager = await startManagerProcess({
+      env: {
+        DID_MANAGER_STANDALONE_NODE: `http://127.0.0.1:${standalonePorts.node}`,
+        DID_MANAGER_STANDALONE_INDEXER: `http://127.0.0.1:${standalonePorts.indexer}/api/v4/graphql`,
+        DID_MANAGER_STANDALONE_INDEXER_WS: `ws://127.0.0.1:${standalonePorts.indexer}/api/v4/graphql/ws`,
+        DID_MANAGER_STANDALONE_PROOF_SERVER: `http://127.0.0.1:${standalonePorts['proof-server']}`,
+      },
+    });
 
-  return {
-    ...manager,
-    stop: async () => {
-      await manager.stop();
-      await dockerCompose('down', '--volumes', '--remove-orphans').catch(() => undefined);
-    },
-  };
+    return {
+      ...manager,
+      stop: async () => {
+        await manager.stop();
+        await dockerCompose('down', '--volumes', '--remove-orphans').catch(() => undefined);
+      },
+    };
+  } catch (error) {
+    console.error(await dockerCompose('logs', '--no-color').catch(() => 'Compose diagnostics unavailable'));
+    await dockerCompose('down', '--volumes', '--remove-orphans').catch(() => undefined);
+    throw error;
+  }
 };
 
 export const startManagerPreprodFundingEnv = async (dataDir?: string): Promise<ManagerE2EEnv> =>

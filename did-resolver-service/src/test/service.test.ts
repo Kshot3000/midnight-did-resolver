@@ -60,8 +60,8 @@ describe("did-resolver-service service", () => {
     });
 
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     const result = await service.resolve("did:midnight:devnet:abc");
@@ -75,8 +75,8 @@ describe("did-resolver-service service", () => {
   it("maps null resolution to notFound", async () => {
     resolveResultMock.mockResolvedValue(null);
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     const result = await service.resolve("did:midnight:devnet:abc");
@@ -87,8 +87,8 @@ describe("did-resolver-service service", () => {
   it("reuses resolver instances for same endpoint pair", async () => {
     resolveResultMock.mockResolvedValue(null);
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     await service.resolve("did:midnight:devnet:abc");
@@ -152,8 +152,8 @@ describe("did-resolver-service service", () => {
 
   it("maps validation/network/internal errors to expected DID errors", async () => {
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     resolveResultMock.mockRejectedValueOnce(
@@ -183,8 +183,8 @@ describe("did-resolver-service service", () => {
   it("uses injected logger for debug error output", async () => {
     const logger = { error: vi.fn() };
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       debug: true,
       logger,
     });
@@ -208,8 +208,8 @@ describe("did-resolver-service service", () => {
       () => new Promise(() => undefined) as Promise<never>,
     );
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       resolveTimeoutMs: 5,
     });
 

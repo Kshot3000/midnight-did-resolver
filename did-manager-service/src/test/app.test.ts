@@ -37,7 +37,7 @@ describe('did-manager-service app', () => {
         faucetUrl: null,
         endpoints: {
           node: 'http://127.0.0.1:9944',
-          indexer: 'http://127.0.0.1:8088/api/v3/graphql',
+          indexer: 'http://127.0.0.1:8088/api/v4/graphql',
           proofServer: 'http://127.0.0.1:6300',
         },
       }),
@@ -270,7 +270,7 @@ describe('did-manager-service app', () => {
         faucetUrl: null,
         endpoints: {
           node: 'http://127.0.0.1:9944',
-          indexer: 'http://127.0.0.1:8088/api/v3/graphql',
+          indexer: 'http://127.0.0.1:8088/api/v4/graphql',
           proofServer: 'http://127.0.0.1:6300',
         },
       },
@@ -347,7 +347,7 @@ describe('did-manager-service app', () => {
         faucetUrl: null,
         endpoints: {
           node: 'http://127.0.0.1:9944',
-          indexer: 'http://127.0.0.1:8088/api/v3/graphql',
+          indexer: 'http://127.0.0.1:8088/api/v4/graphql',
           proofServer: 'http://127.0.0.1:6300',
         },
       }),
@@ -470,7 +470,7 @@ describe('did-manager-service app', () => {
         faucetUrl: null,
         endpoints: {
           node: 'http://127.0.0.1:9944',
-          indexer: 'http://127.0.0.1:8088/api/v3/graphql',
+          indexer: 'http://127.0.0.1:8088/api/v4/graphql',
           proofServer: 'http://127.0.0.1:6300',
         },
       }),

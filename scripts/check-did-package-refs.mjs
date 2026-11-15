@@ -70,6 +70,16 @@ for (const packageFile of packageFiles) {
     "optionalDependencies",
   ]) {
     for (const [packageName, spec] of Object.entries(packageJson[field] ?? {})) {
+      const runtimeVersion = packageName.startsWith("@midnight-ntwrk/midnight-js-") ? "5.0.0"
+        : packageName === "@midnight-ntwrk/compact-runtime" ? "0.21.0"
+        : ["@midnight-ntwrk/wallet-sdk-hd", "@midnight-ntwrk/wallet-sdk-address-format"].includes(packageName) ? "4.0.0"
+        : packageName === "@midnightntwrk/ledger-v9" ? "1.0.0" : null;
+      if (runtimeVersion !== null && spec !== runtimeVersion) {
+        failures.push(`${packageFile} ${field}.${packageName} must use ${runtimeVersion}`);
+      }
+      if (["@midnight-ntwrk/ledger-v8", "@midnight-ntwrk/onchain-runtime-v3", "@midnight-ntwrk/midnight-js-network-id"].includes(packageName)) {
+        failures.push(`${packageFile} must not directly operate through legacy ${packageName}`);
+      }
       if (!didPackageRefs.has(packageName)) {
         continue;
       }

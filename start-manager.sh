@@ -30,13 +30,13 @@ EOF
 }
 
 container_port() {
-  local container_name="$1"
+  local service_name="$1"
   local port_spec="$2"
   local mapping
 
-  mapping="$(docker port "${container_name}" "${port_spec}" 2>/dev/null || true)"
+  mapping="$(docker compose -f infrastructure/standalone.yml port "${service_name}" "${port_spec%/tcp}" 2>/dev/null | head -n1 || true)"
   if [[ -z "${mapping}" ]]; then
-    echo "[start-manager] Cannot resolve ${port_spec} for container ${container_name}." >&2
+    echo "[start-manager] Cannot resolve ${port_spec} for container ${service_name}." >&2
     echo "[start-manager] Ensure standalone Docker infra is already running:" >&2
     echo "  docker compose -f infrastructure/standalone.yml up -d" >&2
     exit 1
@@ -96,13 +96,13 @@ export DID_MANAGER_HOST="${DID_MANAGER_HOST:-127.0.0.1}"
 export DID_MANAGER_PORT="${DID_MANAGER_PORT:-3010}"
 
 if [[ "${profile}" == "standalone" ]]; then
-  NODE_PORT="${DID_MANAGER_STANDALONE_NODE_PORT:-$(container_port did-node 9944/tcp)}"
-  INDEXER_PORT="${DID_MANAGER_STANDALONE_INDEXER_PORT:-$(container_port did-indexer 8088/tcp)}"
-  PROOF_PORT="${DID_MANAGER_STANDALONE_PROOF_SERVER_PORT:-$(container_port did-proof-server 6300/tcp)}"
+  NODE_PORT="${DID_MANAGER_STANDALONE_NODE_PORT:-$(container_port node 9944/tcp)}"
+  INDEXER_PORT="${DID_MANAGER_STANDALONE_INDEXER_PORT:-$(container_port indexer 8088/tcp)}"
+  PROOF_PORT="${DID_MANAGER_STANDALONE_PROOF_SERVER_PORT:-$(container_port proof-server 6300/tcp)}"
 
   export DID_MANAGER_STANDALONE_NODE="${DID_MANAGER_STANDALONE_NODE:-http://127.0.0.1:${NODE_PORT}}"
-  export DID_MANAGER_STANDALONE_INDEXER="${DID_MANAGER_STANDALONE_INDEXER:-http://127.0.0.1:${INDEXER_PORT}/api/v3/graphql}"
-  export DID_MANAGER_STANDALONE_INDEXER_WS="${DID_MANAGER_STANDALONE_INDEXER_WS:-ws://127.0.0.1:${INDEXER_PORT}/api/v3/graphql/ws}"
+  export DID_MANAGER_STANDALONE_INDEXER="${DID_MANAGER_STANDALONE_INDEXER:-http://127.0.0.1:${INDEXER_PORT}/api/v4/graphql}"
+  export DID_MANAGER_STANDALONE_INDEXER_WS="${DID_MANAGER_STANDALONE_INDEXER_WS:-ws://127.0.0.1:${INDEXER_PORT}/api/v4/graphql/ws}"
   export DID_MANAGER_STANDALONE_PROOF_SERVER="${DID_MANAGER_STANDALONE_PROOF_SERVER:-http://127.0.0.1:${PROOF_PORT}}"
 
   echo "[start-manager] Starting did-manager-service in standalone mode"

@@ -93,13 +93,13 @@ export const loadConfig = (
   port: parsePort(env.RESOLVER_PORT),
   indexerHttpUrl: parseUrl(
     env.MIDNIGHT_INDEXER_HTTP_URL,
-    "http://127.0.0.1:8088/api/v3/graphql",
+    "http://127.0.0.1:8088/api/v4/graphql",
     ["http:", "https:"],
     "MIDNIGHT_INDEXER_HTTP_URL",
   ),
   indexerWsUrl: parseUrl(
     env.MIDNIGHT_INDEXER_WS_URL,
-    "ws://127.0.0.1:8088/api/v3/graphql/ws",
+    "ws://127.0.0.1:8088/api/v4/graphql/ws",
     ["ws:", "wss:"],
     "MIDNIGHT_INDEXER_WS_URL",
   ),

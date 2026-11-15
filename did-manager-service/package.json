@@ -46,6 +46,9 @@
     "pino": "^9.7.0"
   },
   "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.21.0",
+    "@midnight-ntwrk/midnight-did-contract": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-js-types": "5.0.0",
     "@playwright/test": "^1.58.2"
   }
 }

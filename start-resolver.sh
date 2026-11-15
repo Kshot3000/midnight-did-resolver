@@ -24,13 +24,13 @@ EOF
 }
 
 container_port() {
-  local container_name="$1"
+  local service_name="$1"
   local port_spec="$2"
   local mapping
 
-  mapping="$(docker port "${container_name}" "${port_spec}" 2>/dev/null || true)"
+  mapping="$(docker compose -f infrastructure/standalone.yml port "${service_name}" "${port_spec%/tcp}" 2>/dev/null | head -n1 || true)"
   if [[ -z "${mapping}" ]]; then
-    echo "[start-resolver] Cannot resolve ${port_spec} for container ${container_name}." >&2
+    echo "[start-resolver] Cannot resolve ${port_spec} for container ${service_name}." >&2
     echo "[start-resolver] Ensure standalone Docker infra is already running:" >&2
     echo "  docker compose -f infrastructure/standalone.yml up -d" >&2
     exit 1
@@ -74,11 +74,11 @@ export RESOLVER_ENABLE_DOCS="${RESOLVER_ENABLE_DOCS:-true}"
 export RESOLVER_TIMEOUT_MS="${RESOLVER_TIMEOUT_MS:-15000}"
 
 if [[ "${profile}" == "standalone" ]]; then
-  INDEXER_PORT="${MIDNIGHT_STANDALONE_INDEXER_PORT:-$(container_port did-indexer 8088/tcp)}"
+  INDEXER_PORT="${MIDNIGHT_STANDALONE_INDEXER_PORT:-$(container_port indexer 8088/tcp)}"
 
   export MIDNIGHT_NETWORK="${MIDNIGHT_NETWORK:-undeployed}"
-  export MIDNIGHT_INDEXER_HTTP_URL="${MIDNIGHT_INDEXER_HTTP_URL:-http://127.0.0.1:${INDEXER_PORT}/api/v3/graphql}"
-  export MIDNIGHT_INDEXER_WS_URL="${MIDNIGHT_INDEXER_WS_URL:-ws://127.0.0.1:${INDEXER_PORT}/api/v3/graphql/ws}"
+  export MIDNIGHT_INDEXER_HTTP_URL="${MIDNIGHT_INDEXER_HTTP_URL:-http://127.0.0.1:${INDEXER_PORT}/api/v4/graphql}"
+  export MIDNIGHT_INDEXER_WS_URL="${MIDNIGHT_INDEXER_WS_URL:-ws://127.0.0.1:${INDEXER_PORT}/api/v4/graphql/ws}"
 
   echo "[start-resolver] Starting did-resolver-service in standalone mode"
 elif [[ "${profile}" == "preprod" ]]; then

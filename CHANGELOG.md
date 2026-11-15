@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Coordinate public DID 1.0.0-rc1, SDK5, Ledger9, Compact runtime 0.21.0,
+  serialized-state adapters and manager wallet/provider compatibility.
+- Use the Ledger9 standalone node/indexer/proof cohort, v4 endpoints and locally
+  built demo service images; preserve read-only public resolver operation.
+- Store required wallet lifecycle bytes and quarantine incompatible caches before
+  resync; isolate new private state without erasing seeds, keys or old DBs.
+- Freeze the legacy metadata HD path despite SDK4's role rename; cross-version
+  baseline derivation, native Jubjub point and signature vectors are preserved.
+
+### Migration
+
+- **Ledger9-only:** old Ledger8 DIDs require replacement deployment, changing the
+  address/DID with no automatic on-chain history continuity. No dual-era or CMA
+  migration is provided. See `docs/ledger9-migration.md` before upgrading.
+
+### Security
+
+- Refresh inherited brace-expansion patch lines and scope the fast-uri3 patch
+  override without forcing it onto parents requiring fast-uri4. Keep audit gates;
+  inherited non-blocking/tooling advisories remain separately disclosed.
+- Bound the SDK5-compatible topology's Dockerode4 UUID child to patched11.1.1,
+  validating its actual CJS v4 API rather than waiving the UUID10 advisory.
+
 ## [0.1.0-rc.3] - 2026-09-29
 
 ### Added

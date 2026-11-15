@@ -49,6 +49,14 @@ describe('Ledger9 wallet snapshot boundary', () => {
     expect(await readdir(path.join(root, 'backup', 'wallet-state', 'preprod', 'default'))).toHaveLength(2);
   });
 
+  it('preserves the original cache when its backup destination cannot be created', async () => {
+    const dir = await writeWalletState(root, 'preprod', 'default', 'seedhash', snapshot);
+    await writeFile(path.join(dir, 'meta.json'), '{}');
+    await writeFile(path.join(root, 'backup'), 'not-a-directory');
+    await expect(readWalletState(root, 'preprod', 'default', 'seedhash')).rejects.toThrow();
+    expect(await readFile(path.join(dir, 'shielded.json'), 'utf8')).toBe(snapshot.shieldedState);
+  });
+
   it('does not create a cache or backup when none exists', async () => {
     expect(await readWalletState(root, 'preprod', 'default', 'seedhash')).toBeNull();
     expect(await readdir(root)).toEqual([]);

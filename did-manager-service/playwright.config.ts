@@ -11,6 +11,10 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     headless: true,
+    actionTimeout: 30_000,
+    launchOptions: {
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

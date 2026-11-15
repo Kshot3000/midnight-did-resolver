@@ -20,7 +20,9 @@ Owning source: `midnightntwrk/midnight-did` commit
 | Wallet HD / shielded / unshielded / address-format | 4.0.0 / 4.0.0 / 4.0.0 / 4.0.0 |
 | Wallet abstractions / capabilities | 3.0.0 / 4.0.0 |
 | Local Node / npm tested during upgrade | 24.22.1 / 11.19.1 |
-| Candidate standalone node / indexer / proof | 2.1.101 / 4.4.101 / 9.0.1 (upstream profile; downstream live validation pending) |
+| Standalone node / indexer / proof | 2.1.101 / 4.4.101 / 9.0.1 (local undeployed live flows validated) |
+| Disposable topology tooling | testcontainers 11.14.0 (SDK5 node-client optional peer requires ^11.12.0) |
+| Published ZKIR | 3.1; generated artifacts consumed, no local compiler invocation |
 
 The SDK/Compact JS graph intentionally retains internal Ledger8/onchain-runtime-v3
 packages. They do **not** establish public Ledger8 operating support. Decode SDK5
@@ -54,12 +56,19 @@ A missing lifecycle or incompatible snapshot is moved intact to
 `backup/wallet-state/<network>/<profile>/<seedHash>-incompatible-<unique id>` before
 fresh sync can overwrite its location. Backup failure must stop restoration.
 Seed/session/key-store files are not erased or rewritten by cache invalidation.
+The seed remains in-memory only: process restart requires explicitly re-supplying
+it. Standalone preserves its existing fresh-resync policy (no persisted wallet
+cache), avoiding stale state after a disposable chain reset; public-network
+profiles use the guarded snapshot restore/quarantine policy.
 Backups contain sensitive wallet data and must retain the same local custody controls.
 
 Private state uses a new `midnight-level-db-ledger9/<seedHash>` namespace. Existing
 `midnight-level-db` is left untouched for operator backup; it is not reused for a
 replacement contract. Existing secret-store deterministic derivation and canonical
-fixed-width big-endian Jubjub encodings/signatures remain unchanged. The earlier
+fixed-width big-endian Jubjub encodings/signatures remain unchanged. HD4 renamed
+its Metadata enum; secret storage explicitly freezes its pre-upgrade numeric
+metadata path `m/44'/2400'/account'/4/index`. Nine independently compared baseline
+HD3/DID0.7-to-HD4/rc1 vectors and fixed native point/signature bytes protect it. The earlier
 0.7.0 JWK-cache invalidation requirement still applies when upgrading from <=0.6.0.
 
 Manager DUST bootstrap uses the API's explicit indexed-block-time readiness
@@ -68,14 +77,25 @@ is not a promise that an arbitrary transaction is affordable.
 
 ## Validation status
 
-At the first implementation slice: clean install and installed graph, typecheck,
-strict light pipeline, all unit suites and actual public release-artifact smoke
-passed. Standalone live flows, manager browser E2E, image runtime smoke and final
-docs/coverage remain required; these are not established by upstream DID tests.
+Local validation includes clean install/full installed graph, typecheck, strict
+light/service pipelines, unit/coverage/docs and actual public release-artifact
+smoke. The disposable Ledger9 resolver flow tests real wallet lifecycle snapshot
+restoration and DID deploy/update/resolve/deactivate through REST. Manager
+Chromium E2E covers all three signing curves, indexer-only verification, restart
+with explicit seed entry, fresh resync/explicit join/post-restart mutation and
+deactivation. Both locally built service images pass the CI-style demo runtime
+health/readiness smoke. Exact-head results and any later CI gaps are recorded on
+the draft PR; none of these claims are inferred from upstream DID tests.
 Public preprod/mainnet combinations remain unverified. See the upgrade draft PR
 for exact-head commands, evidence and final limitations. No production deployment,
 release or package publication is performed by this migration.
 
 `npm audit` also reports inherited high/critical issues in baseline test/docs
 packages; the migration does not disable audit checks or claim those advisories
-are resolved. Separately review any newly introduced dependency paths before release.
+are resolved. The unchanged production high-severity gate passes. A narrowly
+scoped `dockerode@4.0.12` child override pins `uuid@11.1.1`: SDK5's optional
+Testcontainers11 peer otherwise introduces vulnerable UUID10. Dockerode uses
+only zero-argument CJS `v4`; that actual call site and real topology are tested.
+This is an explicit compatibility exception, not an advisory waiver. Baseline-to-
+final audit root comparison finds no new root advisories. Full audit debt remains
+tracked separately; do not interpret a passing threshold as an entirely clean audit.

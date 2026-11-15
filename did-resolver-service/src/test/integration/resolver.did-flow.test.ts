@@ -309,6 +309,17 @@ describeDidFlow("did-resolver-service e2e DID lifecycle", () => {
           timeoutMs: 120_000,
         },
       );
+      // Exercise real SDK5 lifecycle serialization/restoration on this owned
+      // funded Ledger9 wallet before producing DID transactions.
+      const snapshot = await api.serializeWalletState(walletCtx);
+      expect(snapshot.transactionLifecycleState.length).toBeGreaterThan(0);
+      await walletCtx.wallet.stop();
+      walletCtx = await api.restoreWalletFromState(
+        cfg,
+        GENESIS_MINT_WALLET_SEED,
+        snapshot,
+      );
+      await api.waitForWalletSync(walletCtx);
       providers = await api.configureProviders(walletCtx, cfg);
 
       const privateState = await api.initPrivateState(providers);

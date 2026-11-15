@@ -98,7 +98,7 @@ export const writeWalletState = async (
   snapshot: MidnightWalletStateSnapshot,
 ): Promise<string> => {
   const dir = walletStateDir(baseDir, network, profileName, seedHash);
-  await mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true, mode: 0o700 });
   const meta: WalletStateMeta = {
     version: 3,
     walletSchema: 'ledger9-sdk5',
@@ -108,12 +108,12 @@ export const writeWalletState = async (
     updatedAt: new Date().toISOString(),
   };
   await Promise.all([
-    writeFile(metaFilePath(dir), JSON.stringify(meta, null, 2), 'utf8'),
-    writeFile(shieldedFilePath(dir), snapshot.shieldedState, 'utf8'),
-    writeFile(unshieldedFilePath(dir), snapshot.unshieldedState, 'utf8'),
-    writeFile(dustFilePath(dir), snapshot.dustState, 'utf8'),
-    writeFile(historyFilePath(dir), snapshot.unshieldedHistory ?? '', 'utf8'),
-    writeFile(lifecycleFilePath(dir), snapshot.transactionLifecycleState, 'utf8'),
+    writeFile(metaFilePath(dir), JSON.stringify(meta, null, 2), { encoding: 'utf8', mode: 0o600 }),
+    writeFile(shieldedFilePath(dir), snapshot.shieldedState, { encoding: 'utf8', mode: 0o600 }),
+    writeFile(unshieldedFilePath(dir), snapshot.unshieldedState, { encoding: 'utf8', mode: 0o600 }),
+    writeFile(dustFilePath(dir), snapshot.dustState, { encoding: 'utf8', mode: 0o600 }),
+    writeFile(historyFilePath(dir), snapshot.unshieldedHistory ?? '', { encoding: 'utf8', mode: 0o600 }),
+    writeFile(lifecycleFilePath(dir), snapshot.transactionLifecycleState, { encoding: 'utf8', mode: 0o600 }),
   ]);
   return dir;
 };

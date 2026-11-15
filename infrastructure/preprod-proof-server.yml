@@ -1,15 +1,23 @@
 services:
   proof-server:
     container_name: "did-preprod-proof-server"
-    image: "${PROOF_SERVER_IMAGE:-midnightntwrk/proof-server:8.0.3}"
+    image: "${PROOF_SERVER_IMAGE:-midnightntwrk/proof-server:9.0.1}"
     command: ["midnight-proof-server", "-v"]
     ports:
       - "6300:6300"
     environment:
       RUST_BACKTRACE: "full"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6300/version"]
+      test:
+        - CMD
+        - /bin/bash
+        - -c
+        - |
+          exec 3<>/dev/tcp/127.0.0.1/6300 || exit 1
+          printf 'GET /version HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3
+          IFS= read -r -t 3 status <&3 || exit 1
+          [[ "$$status" == "HTTP/1.1 200 "* || "$$status" == "HTTP/1.0 200 "* ]]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 60
       start_period: 10s
