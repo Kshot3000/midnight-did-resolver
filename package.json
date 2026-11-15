@@ -33,7 +33,8 @@
     "docs:build": "npm run docs:build -w docs-site",
     "docs:preview": "npm run docs:preview -w docs-site",
     "check:run-target-catalog": "node scripts/check-run-target-catalog.mjs",
-    "check:demo": "./demo/run.sh config >/dev/null"
+    "check:demo": "./demo/run.sh config >/dev/null && npm run check:standalone-node-schemes",
+    "check:standalone-node-schemes": "node scripts/check-standalone-node-schemes.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/contract": "npm:@midnight-ntwrk/midnight-did-contract@1.0.0-rc1",

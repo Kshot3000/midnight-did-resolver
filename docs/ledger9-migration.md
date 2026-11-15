@@ -48,6 +48,16 @@ requires neither a wallet/funding, node/proof service nor a local Compact compil
 Indexer endpoints remain startup configuration, never caller-selected routing.
 Wallet/node/proof infrastructure belongs to manager mutations and live test fixtures.
 
+## Local transport configuration
+
+Both indexer node clients (`NODE` and `SPO_NODE`) honor the startup-only
+`LOCAL_NODE_WS_SCHEME` knob. Its default remains **plaintext `ws`**, intended
+only for the isolated disposable development network. Setting it to `wss`
+requires an actual TLS-capable node endpoint; interpolation neither enables TLS
+on the bundled dev node nor proves encrypted deployment. `npm run check:demo`
+regression-checks both clients' default and override rendering in all four local
+topologies. No scanner policy or alert-state suppression is part of this change.
+
 ## Local state and custody
 
 Wallet snapshots are version 3 / `ledger9-sdk5`, and include the opaque SDK
