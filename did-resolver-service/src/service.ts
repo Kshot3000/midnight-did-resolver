@@ -1,14 +1,10 @@
+import { ContractState } from "@midnight-ntwrk/compact-runtime";
 import {
   MidnightDIDResolver,
   MidnightNetwork,
 } from "@midnight-ntwrk/midnight-did";
 import { DIDContract } from "@midnight-ntwrk/midnight-did-contract";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
-import {
-  ChargedState,
-  ContractState,
-  StateValue,
-} from "@midnight-ntwrk/onchain-runtime-v3";
 
 import { didResolutionErrorPayload } from "./did-resolution-response.js";
 import { IndexerEndpointPolicy } from "./indexer-endpoint-policy.js";
@@ -68,56 +64,6 @@ const defaultLogger: ResolverLogger = {
     }
     console.error(message, context);
   },
-};
-
-type ContractStateData = {
-  readonly serialize: () => Uint8Array;
-  readonly data?: unknown;
-};
-type HasData = { readonly data?: unknown };
-
-const isChargedState = (value: unknown): value is ChargedState =>
-  value != null &&
-  typeof value === "object" &&
-  "state" in value &&
-  isStateValue((value as { state: unknown }).state);
-
-const isStateValue = (value: unknown): value is StateValue => {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "type" in value &&
-    typeof (value as { type: unknown }).type === "function" &&
-    "encode" in value &&
-    typeof (value as { encode: unknown }).encode === "function"
-  );
-};
-
-const coerceToChargedState = (contractState: unknown): ChargedState => {
-  if (isChargedState(contractState)) {
-    return contractState;
-  }
-  const asContractState = contractState as ContractStateData;
-  if (asContractState === null || asContractState === undefined) {
-    throw new Error("Unable to deserialize contract state payload");
-  }
-  if (typeof asContractState.serialize !== "function") {
-    throw new Error("Unable to deserialize contract state payload");
-  }
-  return ContractState.deserialize(asContractState.serialize()).data;
-};
-
-const normalizeContractState = (contractState: unknown): ChargedState => {
-  if (isChargedState(contractState)) {
-    return contractState;
-  }
-  if (contractState != null && typeof contractState === "object") {
-    const nestedState = (contractState as HasData).data;
-    if (isChargedState(nestedState)) {
-      return nestedState;
-    }
-  }
-  return coerceToChargedState(contractState);
 };
 
 export class ResolverService {
@@ -186,11 +132,13 @@ export class ResolverService {
     const resolver = new MidnightDIDResolver({
       expectedNetwork: this.expectedNetwork,
       ledgerReader: async (contractAddress) => {
-        const contractState =
+        const read =
           await publicDataProvider.queryContractState(contractAddress);
-        return contractState === null
-          ? null
-          : DIDContract.ledger(normalizeContractState(contractState));
+        if (read === null) return null;
+        // Only the owning Ledger9 decoder is supplied: never reinterpret Ledger8 bytes.
+        return DIDContract.ledger(
+          read.contractState.deserialize({ v9: ContractState }).data,
+        );
       },
     });
     this.touchCache(cacheKey, resolver);

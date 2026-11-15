@@ -304,6 +304,10 @@ describeDidFlow("did-resolver-service e2e DID lifecycle", () => {
       await api.registerForDustGeneration(
         walletCtx.wallet,
         walletCtx.unshieldedKeystore,
+        {
+          indexedBlockTime: api.createIndexerIndexedBlockTime(cfg.indexer),
+          timeoutMs: 120_000,
+        },
       );
       providers = await api.configureProviders(walletCtx, cfg);
 

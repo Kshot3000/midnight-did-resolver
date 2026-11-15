@@ -6,7 +6,6 @@ import {
   verify,
 } from "node:crypto";
 
-import { maxField } from "@midnight-ntwrk/ledger-v8";
 import {
   decodeJubjubJwkCoordinate,
   encodeJubjubJwkCoordinate,
@@ -18,6 +17,7 @@ import {
   signJubjubPayloadFromSeed,
   verifyJubjubPayload,
 } from "@midnight-ntwrk/midnight-did-jubjub-schnorr";
+import { maxField } from "@midnightntwrk/ledger-v9";
 
 import { UnsupportedCurveError } from "./errors.js";
 import type { ImportKeyInput, MidnightCurve, PublicJwk } from "./types.js";

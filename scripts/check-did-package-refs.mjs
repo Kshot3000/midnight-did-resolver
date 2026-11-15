@@ -11,7 +11,7 @@ const packageFiles = [
   "secret-storage/package.json",
 ];
 
-const didPackageVersion = "0.7.0";
+const didPackageVersion = "1.0.0-rc1";
 const didPackageRefs = new Map([
   ["@midnight-ntwrk/midnight-did", didPackageVersion],
   ["@midnight-ntwrk/midnight-did-api", didPackageVersion],
@@ -35,19 +35,14 @@ if (
   );
 }
 
-if (rootPackageJson.overrides?.["@midnight-ntwrk/ledger-v8"] !== "8.1.0") {
+if (rootPackageJson.overrides?.["@midnightntwrk/ledger-v9"] !== "1.0.0") {
   failures.push(
-    "package.json overrides.@midnight-ntwrk/ledger-v8 must be 8.1.0 to keep DID API wallet WASM classes on one ledger instance",
+    "package.json overrides.@midnightntwrk/ledger-v9 must be 1.0.0 to keep DID API wallet WASM classes on one ledger instance",
   );
 }
 
-if (
-  rootPackageJson.overrides?.["@midnight-ntwrk/midnight-js-network-id"] !==
-  "4.0.2"
-) {
-  failures.push(
-    "package.json overrides.@midnight-ntwrk/midnight-js-network-id must be 4.0.2 to share DID API network configuration across the contract graph",
-  );
+if (rootPackageJson.overrides?.["@midnight-ntwrk/midnight-js-network-id"] !== undefined) {
+  failures.push("SDK5 uses explicit provider network identity, not the legacy network-id singleton");
 }
 
 for (const [packageName, expectedRef] of didPackageRefs) {

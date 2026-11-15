@@ -10,7 +10,6 @@ import {
   VerificationMethodType,
 } from '@midnight-ntwrk/midnight-did-domain';
 import { FileSecretStore, type PublicJwk } from '@midnight-ntwrk/midnight-did-secret-storage';
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 import type { ManagerConfig, SetupProfile } from '../config.js';
 
@@ -18,7 +17,7 @@ export const nowIso = (): string => new Date().toISOString();
 export const generateSeedHex = (): string => randomBytes(32).toString('hex');
 export const profileNamePattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
 
-const runtimeNetworkMap: Record<ReturnType<typeof getNetworkId>, MidnightNetwork> = {
+const runtimeNetworkMap: Record<string, MidnightNetwork> = {
   undeployed: MidnightNetwork.Undeployed,
   devnet: MidnightNetwork.DevNet,
   testnet: MidnightNetwork.Testnet,
@@ -32,7 +31,6 @@ export const buildProfileConfig = (cfg: ManagerConfig, profile: SetupProfile): a
   if (profile === 'standalone') {
     // Initialize network id inside the API package runtime as well.
     void new api.StandaloneConfig();
-    setNetworkId('undeployed');
     return {
       logDir: `${baseLogDir}/${nowIso()}.log`,
       indexer: cfg.standalone.indexer,
@@ -45,7 +43,6 @@ export const buildProfileConfig = (cfg: ManagerConfig, profile: SetupProfile): a
   if (profile === 'preprod') {
     // Initialize network id inside the API package runtime as well.
     void new api.PreprodConfig();
-    setNetworkId('preprod');
     return {
       logDir: `${baseLogDir}/${nowIso()}.log`,
       indexer: cfg.preprod.indexer,
@@ -62,7 +59,6 @@ export const buildProfileConfig = (cfg: ManagerConfig, profile: SetupProfile): a
     node: cfg.mainnet.node,
     proofServer: cfg.mainnet.proofServer,
   });
-  setNetworkId('mainnet');
   return {
     logDir: `${baseLogDir}/${nowIso()}.log`,
     indexer: cfg.mainnet.indexer,
@@ -73,7 +69,8 @@ export const buildProfileConfig = (cfg: ManagerConfig, profile: SetupProfile): a
 };
 
 export const midnightDbPath = (profileRootDir: string, seedHash: string): string =>
-  path.join(profileRootDir, 'midnight-level-db', seedHash);
+  // Leave Ledger8 private state untouched; a replacement DID gets new private state.
+  path.join(profileRootDir, 'midnight-level-db-ledger9', seedHash);
 
 export const faucetUrl = (profile: SetupProfile): string | null =>
   profile === 'preprod' ? 'https://faucet.preprod.midnight.network/' : null;
@@ -133,9 +130,10 @@ export const buildVerificationMethod = (
   didContract: api.DeployedMidnightDIDContract,
   methodId: string,
   publicJwk: PublicJwk,
+  networkId: api.MidnightDIDWalletContext['networkId'],
 ) => {
   const contractAddress = parseContractAddress(didContract.deployTxData.public.contractAddress);
-  const didSubject = createMidnightDIDString(contractAddress, runtimeNetworkMap[getNetworkId()]);
+  const didSubject = createMidnightDIDString(contractAddress, runtimeNetworkMap[networkId]);
   return createVerificationMethod({
     id: methodId,
     type: VerificationMethodType.JsonWebKey,

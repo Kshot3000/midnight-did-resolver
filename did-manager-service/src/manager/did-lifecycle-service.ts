@@ -85,6 +85,7 @@ export const listStoredContracts = async (input: {
 export const deployDidContract = async (input: {
   logger: Logger;
   walletCtx: api.MidnightDIDWalletContext;
+  indexedBlockTime: () => Promise<Date>;
   providers: api.MidnightDIDProviders;
   onDidContract: (contract: api.DeployedMidnightDIDContract) => void;
   onPersist: () => Promise<void>;
@@ -94,6 +95,7 @@ export const deployDidContract = async (input: {
   await api.registerForDustGeneration(
     walletCtx.wallet,
     walletCtx.unshieldedKeystore,
+    { indexedBlockTime: input.indexedBlockTime, timeoutMs: 120_000 },
   );
   logger.info('Deploying Midnight DID contract');
   const privateState = await api.initPrivateState(providers);

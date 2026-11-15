@@ -36,7 +36,9 @@ vi.mock('@midnight-ntwrk/midnight-did-api', async () => {
     waitForWalletFunds: vi.fn(),
     configureProviders: vi.fn(),
     resolve: vi.fn(),
+    createIndexerIndexedBlockTime: vi.fn(() => async () => new Date()),
     serializeWalletState: vi.fn().mockResolvedValue({
+      transactionLifecycleState: 'lifecycle',
       shieldedState: 'shielded',
       unshieldedState: 'unshielded',
       dustState: 'dust',
@@ -147,7 +149,9 @@ describe('DidManagerService', () => {
 
     const result = await manager.deployDid();
 
-    expect(api.registerForDustGeneration).toHaveBeenCalledWith(wallet, unshieldedKeystore);
+    expect(api.registerForDustGeneration).toHaveBeenCalledWith(wallet, unshieldedKeystore, {
+      indexedBlockTime: expect.any(Function), timeoutMs: 120_000,
+    });
     expect(api.initPrivateState).toHaveBeenCalledWith(providers);
     expect(api.createDID).toHaveBeenCalledWith(providers, privateState);
     expect(result).toEqual({ contractAddress: 'f'.repeat(64) });
@@ -473,7 +477,8 @@ describe('DidManagerService', () => {
       }
     }
 
-    expect(api.restoreWalletFromState).toHaveBeenCalledTimes(1);
+    // Ledger8 bytes must never reach the Ledger9 restore API.
+    expect(api.restoreWalletFromState).not.toHaveBeenCalled();
     expect(api.buildWallet).toHaveBeenCalledTimes(1);
     const backupRoot = path.join(dataDir, 'backup', 'wallet-state', 'preprod', 'default');
     expect((await readdir(backupRoot)).length).toBeGreaterThan(0);

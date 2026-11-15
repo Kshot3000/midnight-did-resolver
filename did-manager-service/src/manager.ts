@@ -237,7 +237,9 @@ export class DidManagerService {
     if (didContract === null) {
       throw new Error('Session is closed or DID contract is not selected.');
     }
-    return buildVerificationMethod(didContract, methodId, publicJwk);
+    const walletCtx = this.runtime.getWalletContext();
+    if (walletCtx === null) throw new Error('Wallet session is closed.');
+    return buildVerificationMethod(didContract, methodId, publicJwk, walletCtx.networkId);
   }
 
   private async persistRuntimeSession(): Promise<void> {
@@ -623,6 +625,7 @@ export class DidManagerService {
       throw new Error('Session is closed. Start session first.');
     }
     const result = await deployDidContract({
+      indexedBlockTime: api.createIndexerIndexedBlockTime(this.profileConfig().indexer),
       logger: this.logger,
       walletCtx,
       providers,

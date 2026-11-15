@@ -109,11 +109,14 @@ describe('DID lifecycle service', () => {
     await expect(deployDidContract({
       logger: { info: vi.fn() } as never,
       walletCtx,
+      indexedBlockTime: async () => new Date('2026-11-15T00:00:00Z'),
       providers,
       onDidContract: vi.fn(),
       onPersist: persist,
     })).resolves.toEqual({ contractAddress: 'a'.repeat(64) });
-    expect(apiMock.registerForDustGeneration).toHaveBeenCalledWith(walletCtx.wallet, walletCtx.unshieldedKeystore);
+    expect(apiMock.registerForDustGeneration).toHaveBeenCalledWith(walletCtx.wallet, walletCtx.unshieldedKeystore, {
+      indexedBlockTime: expect.any(Function), timeoutMs: 120_000,
+    });
     expect(apiMock.initPrivateState).toHaveBeenCalledWith(providers);
     expect(persist).toHaveBeenCalled();
   });
