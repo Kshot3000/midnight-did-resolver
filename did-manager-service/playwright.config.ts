@@ -1,4 +1,7 @@
 import { defineConfig } from '@playwright/test';
+import { getChromiumExecutablePath } from '../scripts/playwright-browser.mjs';
+
+const executablePath = getChromiumExecutablePath();
 
 export default defineConfig({
   testDir: './src/e2e',
@@ -12,9 +15,7 @@ export default defineConfig({
   use: {
     headless: true,
     actionTimeout: 30_000,
-    launchOptions: {
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
-    },
+    ...(executablePath === undefined ? {} : { launchOptions: { executablePath } }),
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

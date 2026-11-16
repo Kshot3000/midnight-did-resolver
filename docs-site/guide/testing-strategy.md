@@ -139,6 +139,25 @@ one package. Current minimums are:
 Every pull request targeting `develop` or `main` runs the required coverage
 job. Reports are retained for 14 days, including on failure.
 
+## Non-publishing release-policy regression tests
+
+```bash
+npm run test:release-policy
+```
+
+CI runs this command in the light validation job before the production dependency
+audit. Tests exercise the exact event/ref/channel matrix, canonical full versions
+and positive/no-leading-zero RC indices, the 128-character image-tag limit,
+four-runtime-manifest base matching, pinned clean source/workflow identity,
+canonical resolver/manager tags and stable-only `latest`. Workflow-YAML mutation
+tests catch restored push/tag triggers, wrong checkout/source labels, unsafe tag
+or identity wiring, skipped boundaries and weakened attestations/permissions.
+CLI orchestration and workflow-wired build/Cosign recording stubs verify rejected
+requests cannot reach publishing/signing consumers. These tests do not dispatch
+the publication workflow, contact the registry or produce release signatures.
+They prove policy regressions, not artifact readiness or release authorization;
+retain the separate [publication approval and evidence requirements](/guide/publishing#stable-promotion-and-approval-prerequisites).
+
 ## Local release-signoff commands
 
 Fast validation:

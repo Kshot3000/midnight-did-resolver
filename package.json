@@ -24,6 +24,7 @@
     "build:did-jubjub-schnorr": "npm run check:did-libs",
     "build:did-prereqs": "npm run check:did-libs",
     "build:all": "npm run build -w @midnight-ntwrk/midnight-did-secret-storage && npm run build:did-prereqs && npm run build -w @midnight-ntwrk/midnight-did-resolver-service && npm --ignore-scripts run build -w @midnight-ntwrk/midnight-did-manager-service",
+    "test:playwright-browser": "node --test scripts/playwright-browser.test.mjs",
     "test:all": "npm run test -w @midnight-ntwrk/midnight-did-secret-storage && npm run test -w @midnight-ntwrk/midnight-did-resolver-service && npm --ignore-scripts run test -w @midnight-ntwrk/midnight-did-manager-service",
     "coverage": "turbo run coverage --filter=./secret-storage --filter=./did-resolver-service --filter=./did-manager-service --continue",
     "ci:typescript": "npm run check:run-target-catalog && npm run lint && npm run build:all && npm run test:all",
@@ -34,7 +35,8 @@
     "docs:preview": "npm run docs:preview -w docs-site",
     "check:run-target-catalog": "node scripts/check-run-target-catalog.mjs",
     "check:demo": "./demo/run.sh config >/dev/null && npm run check:standalone-node-schemes",
-    "check:standalone-node-schemes": "node scripts/check-standalone-node-schemes.mjs"
+    "check:standalone-node-schemes": "node scripts/check-standalone-node-schemes.mjs",
+    "test:release-policy": "node --test scripts/release-context.test.mjs scripts/release-workflow.test.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/contract": "npm:@midnight-ntwrk/midnight-did-contract@1.0.0-rc1",
@@ -89,6 +91,7 @@
     "ts-node": "^10.9.2",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "yaml": "2.9.0"
   }
 }
