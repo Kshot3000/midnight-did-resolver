@@ -57,6 +57,55 @@ Persisted state includes:
 - Playwright standalone: `npm run test:e2e:standalone -w @midnight-ntwrk/midnight-did-manager-service`
 - Playwright preprod funding: `npm run test:e2e:preprod -w @midnight-ntwrk/midnight-did-manager-service`
 
+## Browser tests on NixOS or with packaged Chromium
+
+By default, `./run.sh manager --strict` installs and uses Playwright's managed
+Chromium. This default (including the runner's cache-unset behavior) is unchanged
+for ordinary Linux and CI.
+
+To opt into an existing packaged Chromium, set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an **absolute path to an executable file**.
+Symlinks are supported. An explicitly empty, relative, missing, directory or
+non-executable path fails validation in both the runner and Playwright config;
+there is no fallback to a downloaded browser. Packaged browser versions are
+caller-managed and may differ from Playwright's supported build.
+
+From the repository root, for example on NixOS:
+
+```bash
+mkdir -p "$PWD/.midnight-test/playwright-cache"
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$HOME/.nix-profile/bin/chromium" \
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.midnight-test/playwright-cache" \
+DID_MANAGER_SETUP=standalone \
+./run.sh manager --strict
+```
+
+In custom-browser mode the runner preserves the caller's absolute
+`PLAYWRIGHT_BROWSERS_PATH`, installs **only Playwright ffmpeg** there (required
+for video), then runs the original standalone E2E tests. If the cache variable is
+unset, the runner defaults it to `$PWD/node_modules/.cache/ms-playwright`, not the
+global browser cache. An explicitly empty or relative cache path (including
+Playwright's special `0` value) is rejected in custom mode. Use a writable,
+run-owned cache directory; do not point it at another worker's cache.
+
+The same browser setting works with direct Playwright commands. For those
+commands, explicitly export the isolated cache and prepare ffmpeg first:
+
+```bash
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$HOME/.nix-profile/bin/chromium"
+export PLAYWRIGHT_BROWSERS_PATH="$PWD/.midnight-test/playwright-cache"
+npm exec -w @midnight-ntwrk/midnight-did-manager-service -- playwright install ffmpeg
+npm run test:e2e:standalone -w @midnight-ntwrk/midnight-did-manager-service
+```
+
+No assertions, test/expectation timeouts, workers, traces, screenshots or
+retain-on-failure video settings change in custom mode. Existing packaged
+Chromium157 was validated on the repair host; this is not a guarantee for every
+Chromium/Playwright version combination. Docker is still required for standalone
+tests; do not run these concurrently with another worker's local infrastructure.
+Run `npm run test:playwright-browser` for browser/config/runner regression tests
+without starting Docker or downloading a browser.
+
 Open:
 - UI: `http://127.0.0.1:3010/`
 - API docs: `http://127.0.0.1:3010/docs`
