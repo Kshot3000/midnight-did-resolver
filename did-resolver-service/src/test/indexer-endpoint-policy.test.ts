@@ -5,13 +5,13 @@ import { IndexerEndpointPolicy } from "../indexer-endpoint-policy";
 describe("did-resolver-service indexer endpoint policy", () => {
   it("returns the immutable startup endpoint pair", () => {
     const policy = new IndexerEndpointPolicy({
-      indexerHttpUrl: "http://default.example/api/v3/graphql",
-      indexerWsUrl: "ws://default.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://default.example/api/v4/graphql",
+      indexerWsUrl: "ws://default.example/api/v4/graphql/ws",
     });
 
     expect(policy.resolve()).toEqual({
-      indexerHttpUrl: "http://default.example/api/v3/graphql",
-      indexerWsUrl: "ws://default.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://default.example/api/v4/graphql",
+      indexerWsUrl: "ws://default.example/api/v4/graphql/ws",
     });
   });
 

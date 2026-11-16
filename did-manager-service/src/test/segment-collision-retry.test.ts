@@ -100,7 +100,7 @@ describe('segment collision retry', () => {
     wallet.balanceUnboundTransaction.mockRejectedValueOnce(collision());
     const guarded = withCollisionRevert(wallet as never, logger);
 
-    await expect(guarded.balanceUnboundTransaction({ id: 'call-tx' } as never, {} as never, {} as never))
+    await expect(guarded.balanceUnboundTransaction({ id: 'call-tx' } as never, {} as never))
       .rejects.toBeInstanceOf(SegmentCollisionError);
     expect(wallet.revert).not.toHaveBeenCalled();
   });
@@ -111,7 +111,7 @@ describe('segment collision retry', () => {
     wallet.balanceUnboundTransaction.mockRejectedValueOnce(failure);
 
     await expect(withCollisionRevert(wallet as never, logger)
-      .balanceUnboundTransaction({ id: 'call-tx' } as never, {} as never, {} as never)).rejects.toBe(failure);
+      .balanceUnboundTransaction({ id: 'call-tx' } as never, {} as never)).rejects.toBe(failure);
   });
 
   it('stops rebalancing after the attempt limit', async () => {

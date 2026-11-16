@@ -22,7 +22,9 @@ npm ci
 npm run build:did-prereqs
 ```
 
-The TypeScript workspace consumes the public `midnight-did` packages from npmjs. The root `package.json` overrides keep the DID package graph pinned consistently to `0.7.0`, its ledger runtime at `8.1.0`, and its network-id singleton at `4.0.2`. These pins prevent duplicate WASM class instances and split network configuration across the DID API wallet and contract graph.
+The TypeScript workspace consumes the exact public DID `1.0.0-rc1` npm cohort, SDK5.0.0, Ledger9 1.0.0 and Compact runtime0.21.0. It does not compile DID contracts. SDK5 state is era-tagged and decoded by the owning Compact runtime. The old network-id singleton is removed in favor of captured wallet/provider identity. See [Ledger9 migration and compatibility](./ledger9-migration) for exact identities, safe cache resync and the replacement-deployment policy.
+
+Standalone defaults use node2.1.101, indexer4.4.101 (`/api/v4/graphql`) and proof-server9.0.1. The browser E2E harness owns unique Compose projects and never removes other standalone containers. On Nix, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$(command -v chromium)` if the downloaded browser cannot use the host linker.
 
 The `@midnight-ntwrk/contract` npm alias in `package.json` remains aligned with the release’s `@midnight-ntwrk/midnight-did-contract` package version to preserve the artifact path expected by the DID API runtime.
 

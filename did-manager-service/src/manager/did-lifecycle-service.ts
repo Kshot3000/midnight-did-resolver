@@ -14,6 +14,7 @@ import {
 import type { Logger } from 'pino';
 
 import type { SetupProfile } from '../config.js';
+import { classifyManagerHttpError } from '../errors.js';
 import type { DidDocumentResponse, DidStateResponse, StoredContractStatus } from '../types.js';
 import { withTimeout } from './helpers.js';
 
@@ -75,7 +76,7 @@ export const listStoredContracts = async (input: {
           deactivated: null,
           version: null,
           operationCount: null,
-          message: error instanceof Error ? error.message : 'Stored contract check failed.',
+          message: classifyManagerHttpError(error).message,
         } satisfies StoredContractStatus;
       }
     }),
@@ -85,6 +86,7 @@ export const listStoredContracts = async (input: {
 export const deployDidContract = async (input: {
   logger: Logger;
   walletCtx: api.MidnightDIDWalletContext;
+  indexedBlockTime: () => Promise<Date>;
   providers: api.MidnightDIDProviders;
   onDidContract: (contract: api.DeployedMidnightDIDContract) => void;
   onPersist: () => Promise<void>;
@@ -94,6 +96,7 @@ export const deployDidContract = async (input: {
   await api.registerForDustGeneration(
     walletCtx.wallet,
     walletCtx.unshieldedKeystore,
+    { indexedBlockTime: input.indexedBlockTime, timeoutMs: 120_000 },
   );
   logger.info('Deploying Midnight DID contract');
   const privateState = await api.initPrivateState(providers);

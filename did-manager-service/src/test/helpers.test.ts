@@ -10,10 +10,6 @@ const apiMock = vi.hoisted(() => ({
   getMidnightDIDLedgerState: vi.fn(),
   joinContract: vi.fn(),
 }));
-const networkMock = vi.hoisted(() => ({
-  getNetworkId: vi.fn(() => 'undeployed'),
-  setNetworkId: vi.fn(),
-}));
 const domainMock = vi.hoisted(() => ({
   createVerificationMethod: vi.fn((input) => input),
 }));
@@ -43,7 +39,6 @@ vi.mock('@midnight-ntwrk/midnight-did-domain', () => ({
   createVerificationMethod: domainMock.createVerificationMethod,
 }));
 vi.mock('@midnight-ntwrk/midnight-did-secret-storage', () => secretStorageMock);
-vi.mock('@midnight-ntwrk/midnight-js-network-id', () => networkMock);
 
 import {
   buildProfileConfig,
@@ -71,7 +66,7 @@ describe('manager helper coverage', () => {
     expect(generateSeedHex()).toMatch(/^[0-9a-f]{64}$/);
     expect(profileNamePattern.test('valid_profile-1')).toBe(true);
     expect(profileNamePattern.test(' bad')).toBe(false);
-    expect(midnightDbPath('/tmp/profile', 'abc')).toBe(path.join('/tmp/profile', 'midnight-level-db', 'abc'));
+    expect(midnightDbPath('/tmp/profile', 'abc')).toBe(path.join('/tmp/profile', 'midnight-level-db-ledger9', 'abc'));
     expect(faucetUrl('preprod')).toContain('faucet.preprod');
     expect(faucetUrl('standalone')).toBeNull();
     await expect(withTimeout(Promise.resolve('ok'), 100, 'quick')).resolves.toBe('ok');
@@ -87,9 +82,6 @@ describe('manager helper coverage', () => {
     expect(apiMock.MainnetConfig).toHaveBeenCalledWith({
       indexer: 'i3', indexerWS: 'w3', node: 'n3', proofServer: 'p3',
     });
-    expect(networkMock.setNetworkId).toHaveBeenCalledWith('undeployed');
-    expect(networkMock.setNetworkId).toHaveBeenCalledWith('preprod');
-    expect(networkMock.setNetworkId).toHaveBeenCalledWith('mainnet');
     const store = await createSecretStore('/tmp/secrets', 'explicit-passphrase');
     expect(store).toBeDefined();
     expect(secretStorageMock.initialize).toHaveBeenCalledWith({
@@ -111,7 +103,7 @@ describe('manager helper coverage', () => {
 
   it('builds a verification method and delegates address derivation', () => {
     const publicJwk = { kty: 'OKP', crv: 'Ed25519', x: 'x' } as const;
-    expect(buildVerificationMethod({ deployTxData: { public: { contractAddress: 'a'.repeat(64) } } } as never, 'key-1', publicJwk))
+    expect(buildVerificationMethod({ deployTxData: { public: { contractAddress: 'a'.repeat(64) } } } as never, 'key-1', publicJwk, 'undeployed'))
       .toMatchObject({ id: 'key-1', controller: expect.stringContaining('did:midnight:undeployed') });
     expect(domainMock.createVerificationMethod).toHaveBeenCalledWith(expect.objectContaining({
       id: 'key-1', publicKeyJwk: publicJwk,

@@ -34,11 +34,11 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
-    "@midnight-ntwrk/midnight-did-domain": "0.7.0",
-    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
-    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.2",
-    "zod": "^4.6.7"
+    "@midnight-ntwrk/midnight-did-domain": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "1.0.0-rc1",
+    "@midnight-ntwrk/wallet-sdk-hd": "4.0.0",
+    "zod": "^4.6.7",
+    "@midnightntwrk/ledger-v9": "1.0.0"
   },
   "files": [
     "dist/**",

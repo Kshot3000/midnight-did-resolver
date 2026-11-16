@@ -237,7 +237,9 @@ export class DidManagerService {
     if (didContract === null) {
       throw new Error('Session is closed or DID contract is not selected.');
     }
-    return buildVerificationMethod(didContract, methodId, publicJwk);
+    const walletCtx = this.runtime.getWalletContext();
+    if (walletCtx === null) throw new Error('Wallet session is closed.');
+    return buildVerificationMethod(didContract, methodId, publicJwk, walletCtx.networkId);
   }
 
   private async persistRuntimeSession(): Promise<void> {
@@ -430,16 +432,17 @@ export class DidManagerService {
       'Using isolated Midnight private state store',
     );
 
-    let persistedWalletState = await this.restorePersistedWalletState(seedHash);
-    if (!this.isUnlockGenerationCurrent(generation)) return;
-    let reusedPersistedState = persistedWalletState !== null;
-    this.setConnectionState(
-      persistedWalletState === null ? 'starting' : 'restoring',
-      { lastError: null, reusedPersistedState, seedHash },
-    );
-
     let walletCtx: api.MidnightDIDWalletContext | null = null;
     try {
+      // Quarantine I/O can fail intentionally. Keep it inside the guarded
+      // unlock lifecycle so backup failure is terminal, not an unhandled task.
+      let persistedWalletState = await this.restorePersistedWalletState(seedHash);
+      if (!this.isUnlockGenerationCurrent(generation)) return;
+      let reusedPersistedState = persistedWalletState !== null;
+      this.setConnectionState(
+        persistedWalletState === null ? 'starting' : 'restoring',
+        { lastError: null, reusedPersistedState, seedHash },
+      );
       if (persistedWalletState === null) {
         walletCtx = await api.buildWallet(config, seed);
       } else {
@@ -623,6 +626,7 @@ export class DidManagerService {
       throw new Error('Session is closed. Start session first.');
     }
     const result = await deployDidContract({
+      indexedBlockTime: api.createIndexerIndexedBlockTime(this.profileConfig().indexer),
       logger: this.logger,
       walletCtx,
       providers,

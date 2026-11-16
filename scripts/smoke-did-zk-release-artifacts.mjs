@@ -12,13 +12,15 @@ import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 
-const VERSION = "0.7.0";
+const VERSION = "1.0.0-rc1";
+const SOURCE_COMMIT = "750268664278c162e9171406983dc45f24bb5be7";
+const RELEASE_SHA256 = "cc997da6cc56bef638e57d27eb08b9923990c64f81330e25236d85c8ad942f9f";
 const RELEASE_ARCHIVE_URL =
   process.env.MIDNIGHT_DID_ZK_RELEASE_ARCHIVE_URL ??
-  "https://api.github.com/repos/midnightntwrk/midnight-did/releases/assets/579975758";
+  "https://api.github.com/repos/midnightntwrk/midnight-did/releases/assets/746530749";
 const RELEASE_SHA256_URL =
   process.env.MIDNIGHT_DID_ZK_RELEASE_SHA256_URL ??
-  "https://api.github.com/repos/midnightntwrk/midnight-did/releases/assets/579975763";
+  "https://api.github.com/repos/midnightntwrk/midnight-did/releases/assets/746530748";
 const RELEASE_FETCH_BASE_URL =
   "https://midnight-did-release-assets.local/zk-artifacts";
 
@@ -82,6 +84,9 @@ const readExpectedArchiveSha = async () => {
   if (!/^[a-f0-9]{64}$/i.test(digest)) {
     throw new Error(`Unexpected sha256 asset contents: ${shaFile}`);
   }
+  if (digest.toLowerCase() !== RELEASE_SHA256) {
+    throw new Error("Checksum asset does not match the pinned public rc1 release");
+  }
   return digest.toLowerCase();
 };
 
@@ -125,6 +130,13 @@ const readReleaseManifest = async () => {
   if (manifest.version !== VERSION) {
     throw new Error(`Unexpected manifest version: ${manifest.version}`);
   }
+  if (manifest.gitSha !== SOURCE_COMMIT) {
+    throw new Error(`Unexpected DID source commit: ${manifest.gitSha}`);
+  }
+  const compiler = JSON.parse(await fs.readFile(path.join(extractDir, "compiler", "contract-manifest.json"), "utf8"));
+  if (compiler["compiler-version"] !== "0.36.0" || compiler["runtime-version"] !== "0.21.0") {
+    throw new Error("Unexpected published Compact compiler/runtime profile");
+  }
   if (!Array.isArray(manifest.circuits) || manifest.circuits.length === 0) {
     throw new Error("Release manifest does not list circuits");
   }
@@ -132,6 +144,9 @@ const readReleaseManifest = async () => {
 };
 
 const assertProviderMatchesManifest = async (label, provider, manifest) => {
+  if (await provider.getArtifactRuntimeVersion() !== "0.21.0") {
+    throw new Error(`${label}: incompatible artifact runtime version`);
+  }
   for (const circuit of manifest.circuits) {
     const [proverKey, verifierKey, zkir] = await Promise.all([
       provider.getProverKey(circuit.id),
@@ -160,18 +175,6 @@ const didContractZkConfigPath = () => {
   return path.join(path.dirname(contractEntry), "managed", "did");
 };
 
-const installReleaseArtifactsIntoPackage = async (zkConfigPath) => {
-  await ensureReleaseArchive();
-  await fs.rm(path.join(zkConfigPath, "keys"), { recursive: true, force: true });
-  await fs.rm(path.join(zkConfigPath, "zkir"), { recursive: true, force: true });
-  await fs.cp(path.join(extractDir, "keys"), path.join(zkConfigPath, "keys"), {
-    recursive: true,
-  });
-  await fs.cp(path.join(extractDir, "zkir"), path.join(zkConfigPath, "zkir"), {
-    recursive: true,
-  });
-};
-
 const createReleaseArchiveFetch = () => async (requestUrl) => {
   await ensureReleaseArchive();
 
@@ -183,7 +186,7 @@ const createReleaseArchiveFetch = () => async (requestUrl) => {
   }
 
   const relativePath = requestedPath.slice(basePath.length + 1);
-  if (!relativePath.startsWith("keys/") && !relativePath.startsWith("zkir/")) {
+  if (!relativePath.startsWith("keys/") && !relativePath.startsWith("zkir/") && !["compiler/contract-manifest.json", "compiler/contract-info.json"].includes(relativePath)) {
     return new Response("Not found", { status: 404, statusText: "Not found" });
   }
 
@@ -203,7 +206,8 @@ const createReleaseArchiveFetch = () => async (requestUrl) => {
 const manifest = await readReleaseManifest();
 const packageZkConfigPath = didContractZkConfigPath();
 
-await installReleaseArtifactsIntoPackage(packageZkConfigPath);
+// Validate public package and archive independently; never mutate installed artifacts.
+await assertProviderMatchesManifest("node release archive", new NodeZkConfigProvider(extractDir), manifest);
 
 await assertProviderMatchesManifest(
   "node package",
@@ -213,7 +217,7 @@ await assertProviderMatchesManifest(
 
 await assertProviderMatchesManifest(
   "fetch release archive",
-  new FetchZkConfigProvider(RELEASE_FETCH_BASE_URL, createReleaseArchiveFetch()),
+  new FetchZkConfigProvider(RELEASE_FETCH_BASE_URL, { fetchFunc: createReleaseArchiveFetch() }),
   manifest,
 );
 

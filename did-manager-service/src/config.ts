@@ -70,8 +70,8 @@ export const loadConfig = (env: Record<string, string | undefined> = process.env
     sessionIdleMs: parsePositiveMs(env.DID_MANAGER_SESSION_IDLE_MS, 5 * 60 * 1000),
     rememberUnlockedSessionDefault: parseBoolean(env.DID_MANAGER_REMEMBER_UNLOCKED, false),
     standalone: {
-      indexer: env.DID_MANAGER_STANDALONE_INDEXER ?? 'http://127.0.0.1:8088/api/v3/graphql',
-      indexerWS: env.DID_MANAGER_STANDALONE_INDEXER_WS ?? 'ws://127.0.0.1:8088/api/v3/graphql/ws',
+      indexer: env.DID_MANAGER_STANDALONE_INDEXER ?? 'http://127.0.0.1:8088/api/v4/graphql',
+      indexerWS: env.DID_MANAGER_STANDALONE_INDEXER_WS ?? 'ws://127.0.0.1:8088/api/v4/graphql/ws',
       node: env.DID_MANAGER_STANDALONE_NODE ?? 'http://127.0.0.1:9944',
       proofServer: env.DID_MANAGER_STANDALONE_PROOF_SERVER ?? 'http://127.0.0.1:6300',
     },

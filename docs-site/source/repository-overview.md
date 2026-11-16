@@ -12,7 +12,7 @@ It contains:
 - Secret-storage package for local key custody, signing, verification, and HD derivation.
 - VitePress documentation that can be published to GitHub Pages.
 
-The core DID contract, domain model, and TypeScript API packages remain in [`midnight-did`](https://github.com/midnightntwrk/midnight-did). This repository consumes the `0.7.0` release from the public npmjs registry.
+The core DID contract, domain model, and TypeScript API packages remain in [`midnight-did`](https://github.com/midnightntwrk/midnight-did). This repository consumes the exact public `1.0.0-rc1` Ledger9 release from npmjs, not npm `latest`. See the `Ledger9 compatibility and migration profile`.
 
 > [!IMPORTANT]
 > Midnight DID 0.7.0 projects native ledger Jubjub JWK coordinates as canonical,
@@ -35,7 +35,7 @@ The core DID contract, domain model, and TypeScript API packages remain in [`mid
 
 Prerequisites:
 
-- Node.js 24 and npm 10.
+- Node.js 24 and npm >=10 (tested locally with Node 24.22.1 / npm 11.19.1).
 - Access to the public npmjs registry.
 - Docker for standalone integration and browser tests.
 
@@ -93,8 +93,9 @@ This repository supports the optional Pi shell for structured `dev-loops` workfl
 ## Docker demo
 
 The `demo/` directory provides a reproducible Docker Compose setup using the
-`0.1.0-rc.2` resolver and manager images together with local Midnight node,
-indexer, and proof-server dependencies:
+locally built Ledger9 resolver and manager images together with node 2.1.101,
+indexer 4.4.101 and proof-server 9.0.1. Older published service RC images are
+not compatible with this topology:
 
 ```bash
 just demo

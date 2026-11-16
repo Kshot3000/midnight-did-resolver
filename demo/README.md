@@ -1,7 +1,7 @@
 # Docker demo
 
-This demo runs the published `0.1.0-rc.2` resolver and manager images with a
-local Midnight node, indexer, and proof server. It is intended for evaluation
+This demo builds the current Ledger9 resolver and manager source locally with
+node 2.1.101, indexer 4.4.101 and proof-server 9.0.1. It is intended for evaluation
 and API/UI exploration, not production deployment. Midnight DID Manager is a
 browser-only demo application; its DID CRUD flows are illustrative and should
 be implemented as issuer/verifier bootstrap or business logic in a real
@@ -16,13 +16,13 @@ passphrase must be entered again after a manager restart.
 
 - Docker Engine with the Docker Compose v2 plugin
 - `curl` for the health command
-- Network access to pull the GHCR and Midnight infrastructure images
+- Network access to pull Node/Midnight base images and public npm dependencies
 
-The application images are public release-candidate images. If GHCR access is
-restricted in your environment, authenticate Docker before starting the demo.
-On its first launch, the proof server may download proving parameters; the
-manager UI can start before that warm-up is complete, but proof-backed
-operations should wait until the proof-server logs show that it is listening.
+No new service image is published by this upgrade. Older published service RCs
+use Ledger8 and must not be mixed with the new topology. Compose waits for the
+proof-server HTTP healthcheck; its first launch can download proving parameters.
+See [the migration profile](../docs/ledger9-migration.md): old contracts require
+replacement deployment, a new DID/address, and explicit cache invalidation.
 
 ## Start
 
@@ -81,16 +81,10 @@ The file controls the application image references and host ports. Set
 without publishing them. The internal application endpoints use Compose service
 names and should not be changed to `127.0.0.1`.
 
-## Release candidate images
+## Local application images
 
-The defaults are:
-
-```text
-ghcr.io/midnightntwrk/midnight-did-resolver-service:0.1.0-rc.2
-ghcr.io/midnightntwrk/midnight-did-manager-service:0.1.0-rc.2
-```
-
-The release workflow publishes exact RC tags and does not move `latest` for a
-pre-release. A release promotion to `main` followed by `v0.1.0-rc.2`, or the
-manual workflow dispatch documented in the repository README, publishes both
-images.
+The defaults are `midnight-did-resolver:ledger9-local` and
+`midnight-did-manager:ledger9-local`. Run `./demo/run.sh up --build` to rebuild
+changed source. Supply explicit local tags for isolated validation. A future
+service release/publication needs separate authorization; this migration neither
+publishes images nor advances `latest`.

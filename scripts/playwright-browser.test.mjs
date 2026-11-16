@@ -84,7 +84,7 @@ test('unset browser retains default config and all diagnostic/time-out settings'
   assert.equal(config.fullyParallel, false);
   assert.equal(config.workers, 1);
   assert.deepEqual(config.use, {
-    headless: true, trace: 'retain-on-failure', screenshot: 'only-on-failure', video: 'retain-on-failure',
+    headless: true, actionTimeout: 30_000, trace: 'retain-on-failure', screenshot: 'only-on-failure', video: 'retain-on-failure',
   });
   assert.deepEqual(config.reporter, [['list'], ['html', { open: 'never' }]]);
 });

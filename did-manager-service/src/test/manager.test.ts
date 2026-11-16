@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ManagerConfig } from '../config.js';
 import { DidManagerService } from '../manager.js';
-import { seedHashPrefix } from '../wallet-state-store.js';
+import { seedHashPrefix, walletStateDir } from '../wallet-state-store.js';
 
 const apiMockState = vi.hoisted(() => ({
   networkConfigured: false,
@@ -36,7 +36,9 @@ vi.mock('@midnight-ntwrk/midnight-did-api', async () => {
     waitForWalletFunds: vi.fn(),
     configureProviders: vi.fn(),
     resolve: vi.fn(),
+    createIndexerIndexedBlockTime: vi.fn(() => async () => new Date()),
     serializeWalletState: vi.fn().mockResolvedValue({
+      transactionLifecycleState: 'lifecycle',
       shieldedState: 'shielded',
       unshieldedState: 'unshielded',
       dustState: 'dust',
@@ -60,8 +62,8 @@ const createConfig = (dataDir: string): ManagerConfig => ({
   sessionIdleMs: 60_000,
   rememberUnlockedSessionDefault: true,
   standalone: {
-    indexer: 'http://127.0.0.1:8088/api/v3/graphql',
-    indexerWS: 'ws://127.0.0.1:8088/api/v3/graphql/ws',
+    indexer: 'http://127.0.0.1:8088/api/v4/graphql',
+    indexerWS: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
     node: 'http://127.0.0.1:9944',
     proofServer: 'http://127.0.0.1:6300',
   },
@@ -147,7 +149,9 @@ describe('DidManagerService', () => {
 
     const result = await manager.deployDid();
 
-    expect(api.registerForDustGeneration).toHaveBeenCalledWith(wallet, unshieldedKeystore);
+    expect(api.registerForDustGeneration).toHaveBeenCalledWith(wallet, unshieldedKeystore, {
+      indexedBlockTime: expect.any(Function), timeoutMs: 120_000,
+    });
     expect(api.initPrivateState).toHaveBeenCalledWith(providers);
     expect(api.createDID).toHaveBeenCalledWith(providers, privateState);
     expect(result).toEqual({ contractAddress: 'f'.repeat(64) });
@@ -300,6 +304,26 @@ describe('DidManagerService', () => {
     expect(status.unlocked).toBe(false);
     expect(status.connection.phase).toBe('error');
     expect(status.connection.lastError).toContain('simulated wallet bootstrap failure');
+  });
+
+  it('terminates startup safely when an incompatible cache cannot be backed up', async () => {
+    const manager = new DidManagerService(createConfig(dataDir), pino({ enabled: false }));
+    const seed = 'a'.repeat(64);
+    await manager.prepareFunding({ seedMode: 'provided', seed });
+    const cache = walletStateDir(dataDir, 'preprod', 'default', seedHashPrefix(seed));
+    await mkdir(cache, { recursive: true });
+    const oldMeta = JSON.stringify({ version: 2, walletSchema: 'ledger8' });
+    await writeFile(path.join(cache, 'meta.json'), oldMeta);
+    await writeFile(path.join(dataDir, 'backup'), 'not-a-directory');
+    await manager.unlock({ seedMode: 'reuse', passphrase: 'test-passphrase' });
+    const task = (manager as any).runtime.getUnlockTask() as Promise<void> | null;
+    expect(task).not.toBeNull();
+    await expect(task).resolves.toBeUndefined();
+    expect((await manager.getSessionStatus()).connection.phase).toBe('error');
+    expect(api.buildWallet).not.toHaveBeenCalled();
+    expect(api.restoreWalletFromState).not.toHaveBeenCalled();
+    expect(api.serializeWalletState).not.toHaveBeenCalled();
+    expect(await readFile(path.join(cache, 'meta.json'), 'utf8')).toBe(oldMeta);
   });
 
   it('prepares generated funding and rejects start session when seedMode=generated', async () => {
@@ -473,7 +497,8 @@ describe('DidManagerService', () => {
       }
     }
 
-    expect(api.restoreWalletFromState).toHaveBeenCalledTimes(1);
+    // Ledger8 bytes must never reach the Ledger9 restore API.
+    expect(api.restoreWalletFromState).not.toHaveBeenCalled();
     expect(api.buildWallet).toHaveBeenCalledTimes(1);
     const backupRoot = path.join(dataDir, 'backup', 'wallet-state', 'preprod', 'default');
     expect((await readdir(backupRoot)).length).toBeGreaterThan(0);

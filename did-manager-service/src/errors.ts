@@ -94,6 +94,17 @@ export const classifyManagerHttpError = (error: unknown): ManagerHttpError => {
     zodMessage ??
     (error instanceof Error ? error.message : "Unexpected manager error");
   const errorName = error instanceof Error ? error.name : "Error";
+  if (
+    typeof error === "object" && error !== null &&
+    "era" in error && error.era === "v8" &&
+    ["SerializedStateDecoderMissingError", "ProviderEraUnsupportedError"].includes(errorName)
+  ) {
+    return {
+      statusCode: 400,
+      errorCode: "invalidRequest",
+      message: "Ledger8 contracts are unsupported. Deploy a Ledger9 replacement with a new address/DID; on-chain history is not automatically preserved.",
+    };
+  }
   const fastifyValidationError =
     typeof error === "object" &&
     error !== null &&

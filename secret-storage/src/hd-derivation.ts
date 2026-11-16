@@ -1,6 +1,6 @@
 import { hkdfSync } from "node:crypto";
 
-import { HDWallet, Roles } from "@midnight-ntwrk/wallet-sdk-hd";
+import { HDWallet } from "@midnight-ntwrk/wallet-sdk-hd";
 
 import { UnsupportedCurveError } from "./errors.js";
 import { seedToBuffer } from "./seed.js";
@@ -11,6 +11,10 @@ const P256_ORDER = BigInt(
 );
 
 const HKDF_SALT = Buffer.from("midnight-did-secret-storage-v1", "utf8");
+
+// HD SDK4 renamed Metadata to EcdsaUnshielded. Freeze our existing metadata
+// derivation path m/44\'/2400\'/account\'/4/index; this is not a new wallet key role.
+const SECRET_STORAGE_METADATA_ROLE = 4;
 
 const bigintTo32Be = (value: bigint): Buffer => {
   const hex = value.toString(16).padStart(64, "0");
@@ -44,7 +48,7 @@ const deriveMetadataKey = (
   try {
     const derivationResult = wallet
       .selectAccount(account)
-      .selectRole(Roles.Metadata)
+      .selectRole(SECRET_STORAGE_METADATA_ROLE)
       .deriveKeyAt(index);
 
     if (derivationResult.type !== "keyDerived") {

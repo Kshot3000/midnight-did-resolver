@@ -41,6 +41,7 @@ export default defineConfig({
           items: [
             { text: "Overview", link: "/guide/" },
             { text: "Local Development", link: "/guide/local-development" },
+            { text: "Ledger9 Migration", link: "/guide/ledger9-migration" },
             { text: "Resolver Getting Started", link: "/guide/getting-started-did-resolver" },
             { text: "Manager Getting Started", link: "/guide/getting-started-did-manager" },
             { text: "Testing Strategy", link: "/guide/testing-strategy" },

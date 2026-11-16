@@ -1,4 +1,5 @@
-import { ContractState } from "@midnight-ntwrk/onchain-runtime-v3";
+import { ContractState } from "@midnight-ntwrk/compact-runtime";
+import { SerializedContractState } from "@midnight-ntwrk/midnight-js-types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolveResultMock = vi.fn();
@@ -59,8 +60,8 @@ describe("did-resolver-service service", () => {
     });
 
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     const result = await service.resolve("did:midnight:devnet:abc");
@@ -74,8 +75,8 @@ describe("did-resolver-service service", () => {
   it("maps null resolution to notFound", async () => {
     resolveResultMock.mockResolvedValue(null);
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     const result = await service.resolve("did:midnight:devnet:abc");
@@ -86,8 +87,8 @@ describe("did-resolver-service service", () => {
   it("reuses resolver instances for same endpoint pair", async () => {
     resolveResultMock.mockResolvedValue(null);
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     await service.resolve("did:midnight:devnet:abc");
@@ -96,65 +97,63 @@ describe("did-resolver-service service", () => {
     expect(resolverCtorMock).toHaveBeenCalledTimes(1);
   });
 
-  it("maps contract state through DIDContract.ledger in resolver reader", async () => {
+  it("decodes era-tagged SDK5 state with the owning Compact runtime", async () => {
     resolveResultMock.mockResolvedValue(null);
     const contractState = new ContractState();
-    queryContractStateMock
-      .mockResolvedValueOnce(contractState)
-      .mockResolvedValueOnce({ data: contractState.data })
-      .mockResolvedValueOnce({ serialize: () => contractState.serialize() });
+    queryContractStateMock.mockResolvedValueOnce({
+      contractState: SerializedContractState.fromBytes(
+        "v9",
+        contractState.serialize(),
+      ),
+    });
     ledgerFromStateMock.mockReturnValue({ ledger: "mapped" });
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
-
     await service.resolve("did:midnight:devnet:abc");
-
-    const ctorArgs = resolverCtorMock.mock.calls[0]?.[0] as {
-      ledgerReader: (address: string) => Promise<unknown>;
-    };
-    const firstMappedState = await ctorArgs.ledgerReader("contract-address");
-    const nestedMappedState = await ctorArgs.ledgerReader("contract-address");
-    const serializedMappedState =
-      await ctorArgs.ledgerReader("contract-address");
-    expect(queryContractStateMock).toHaveBeenCalledWith("contract-address");
-    expect(ledgerFromStateMock).toHaveBeenCalledTimes(3);
-    expect(ledgerFromStateMock).toHaveBeenNthCalledWith(
-      1,
+    const { ledgerReader } = resolverCtorMock.mock.calls[0][0];
+    await expect(ledgerReader("contract-address")).resolves.toEqual({
+      ledger: "mapped",
+    });
+    expect(ledgerFromStateMock).toHaveBeenCalledWith(
       expect.objectContaining({ state: expect.any(Object) }),
     );
-    expect(firstMappedState).toEqual({ ledger: "mapped" });
-    expect(nestedMappedState).toEqual({ ledger: "mapped" });
-    expect(serializedMappedState).toEqual({ ledger: "mapped" });
-
     queryContractStateMock.mockResolvedValueOnce(null);
-    const missingState = await ctorArgs.ledgerReader("missing-address");
-    expect(missingState).toBeNull();
+    await expect(ledgerReader("missing-address")).resolves.toBeNull();
   });
 
-  it("returns internalError when contract state payload cannot be normalized", async () => {
+  it("rejects legacy decoded objects and malformed serialized state", async () => {
     resolveResultMock.mockResolvedValue(null);
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
-
     await service.resolve("did:midnight:devnet:abc");
-
-    const ctorArgs = resolverCtorMock.mock.calls[0]?.[0] as {
-      ledgerReader: (address: string) => Promise<unknown>;
-    };
-    queryContractStateMock.mockResolvedValue({});
-    await expect(ctorArgs.ledgerReader("contract-address")).rejects.toThrow(
-      "Unable to deserialize contract state payload",
-    );
+    const { ledgerReader } = resolverCtorMock.mock.calls[0][0];
+    for (const invalid of [
+      {},
+      new ContractState(),
+      { data: new ContractState().data },
+    ]) {
+      queryContractStateMock.mockResolvedValueOnce(invalid);
+      await expect(ledgerReader("contract-address")).rejects.toThrow();
+    }
+    const bytes = new ContractState().serialize();
+    queryContractStateMock.mockResolvedValueOnce({
+      contractState: SerializedContractState.fromBytes(
+        "v9",
+        bytes.slice(0, bytes.length - 1),
+      ),
+    });
+    await expect(ledgerReader("contract-address")).rejects.toThrow();
+    expect(ledgerFromStateMock).not.toHaveBeenCalled();
   });
 
   it("maps validation/network/internal errors to expected DID errors", async () => {
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
     });
 
     resolveResultMock.mockRejectedValueOnce(
@@ -184,8 +183,8 @@ describe("did-resolver-service service", () => {
   it("uses injected logger for debug error output", async () => {
     const logger = { error: vi.fn() };
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       debug: true,
       logger,
     });
@@ -209,8 +208,8 @@ describe("did-resolver-service service", () => {
       () => new Promise(() => undefined) as Promise<never>,
     );
     const service = new ResolverService({
-      indexerHttpUrl: "http://indexer.example/api/v3/graphql",
-      indexerWsUrl: "ws://indexer.example/api/v3/graphql/ws",
+      indexerHttpUrl: "http://indexer.example/api/v4/graphql",
+      indexerWsUrl: "ws://indexer.example/api/v4/graphql/ws",
       resolveTimeoutMs: 5,
     });
 

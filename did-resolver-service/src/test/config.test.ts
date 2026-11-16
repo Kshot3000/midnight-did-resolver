@@ -9,8 +9,8 @@ describe("did-resolver-service config", () => {
     expect(cfg).toEqual({
       host: "127.0.0.1",
       port: 3001,
-      indexerHttpUrl: "http://127.0.0.1:8088/api/v3/graphql",
-      indexerWsUrl: "ws://127.0.0.1:8088/api/v3/graphql/ws",
+      indexerHttpUrl: "http://127.0.0.1:8088/api/v4/graphql",
+      indexerWsUrl: "ws://127.0.0.1:8088/api/v4/graphql/ws",
       expectedNetwork: null,
       debug: false,
       enableDocs: true,
@@ -22,8 +22,8 @@ describe("did-resolver-service config", () => {
     const cfg = loadConfig({
       RESOLVER_HOST: "0.0.0.0",
       RESOLVER_PORT: "13001",
-      MIDNIGHT_INDEXER_HTTP_URL: "https://indexer.example/api/v3/graphql",
-      MIDNIGHT_INDEXER_WS_URL: "wss://indexer.example/api/v3/graphql/ws",
+      MIDNIGHT_INDEXER_HTTP_URL: "https://indexer.example/api/v4/graphql",
+      MIDNIGHT_INDEXER_WS_URL: "wss://indexer.example/api/v4/graphql/ws",
       MIDNIGHT_NETWORK: "PreProd",
       RESOLVER_DEBUG: "true",
       RESOLVER_ENABLE_DOCS: "false",
@@ -32,8 +32,8 @@ describe("did-resolver-service config", () => {
 
     expect(cfg.host).toBe("0.0.0.0");
     expect(cfg.port).toBe(13001);
-    expect(cfg.indexerHttpUrl).toBe("https://indexer.example/api/v3/graphql");
-    expect(cfg.indexerWsUrl).toBe("wss://indexer.example/api/v3/graphql/ws");
+    expect(cfg.indexerHttpUrl).toBe("https://indexer.example/api/v4/graphql");
+    expect(cfg.indexerWsUrl).toBe("wss://indexer.example/api/v4/graphql/ws");
     expect(cfg.expectedNetwork).toBe(MidnightNetwork.Preprod);
     expect(cfg.debug).toBe(true);
     expect(cfg.enableDocs).toBe(false);

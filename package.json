@@ -34,27 +34,30 @@
     "docs:build": "npm run docs:build -w docs-site",
     "docs:preview": "npm run docs:preview -w docs-site",
     "check:run-target-catalog": "node scripts/check-run-target-catalog.mjs",
-    "check:demo": "./demo/run.sh config >/dev/null",
+    "check:demo": "./demo/run.sh config >/dev/null && npm run check:standalone-node-schemes",
+    "check:standalone-node-schemes": "node scripts/check-standalone-node-schemes.mjs",
     "test:release-policy": "node --test scripts/release-context.test.mjs scripts/release-workflow.test.mjs"
   },
   "dependencies": {
-    "@midnight-ntwrk/contract": "npm:@midnight-ntwrk/midnight-did-contract@0.7.0",
-    "@midnight-ntwrk/midnight-did": "0.7.0",
-    "@midnight-ntwrk/midnight-did-api": "0.7.0",
-    "@midnight-ntwrk/midnight-did-contract": "0.7.0",
-    "@midnight-ntwrk/midnight-did-domain": "0.7.0",
-    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
-    "@midnight-ntwrk/midnight-js-network-id": "4.0.2"
+    "@midnight-ntwrk/contract": "npm:@midnight-ntwrk/midnight-did-contract@1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-api": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-contract": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-domain": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "1.0.0-rc1"
   },
   "overrides": {
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
-    "@midnight-ntwrk/midnight-js-network-id": "4.0.2",
-    "@midnight-ntwrk/midnight-did": "0.7.0",
-    "@midnight-ntwrk/midnight-did-api": "0.7.0",
-    "@midnight-ntwrk/midnight-did-contract": "0.7.0",
-    "@midnight-ntwrk/midnight-did-domain": "0.7.0",
-    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "0.7.0",
-    "fast-uri": "3.1.8",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "5.0.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "4.0.0",
+    "dockerode@4.0.12": {
+      "uuid": "11.1.1"
+    },
+    "@midnight-ntwrk/midnight-did": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-api": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-contract": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-domain": "1.0.0-rc1",
+    "@midnight-ntwrk/midnight-did-jubjub-schnorr": "1.0.0-rc1",
+    "fast-uri@>=3 <4": "3.1.9",
     "find-my-way": "^9.7.0",
     "@fastify/swagger-ui": "^6.1.1",
     "@fastify/static": "^10.1.2",
@@ -65,12 +68,13 @@
       }
     },
     "js-yaml": "4.3.2",
-    "ws": "^8.21.2"
+    "ws": "^8.21.2",
+    "@midnightntwrk/ledger-v9": "1.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
-    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "4.0.4",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.0.4",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "5.0.0",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "5.0.0",
     "@playwright/test": "^1.58.2",
     "@types/node": "^22.15.29",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
@@ -83,7 +87,7 @@
     "eslint-plugin-prettier": "^5.4.1",
     "eslint-plugin-simple-import-sort": "^12.0.0",
     "globals": "^16.2.0",
-    "testcontainers": "^12.1.0",
+    "testcontainers": "11.14.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3",

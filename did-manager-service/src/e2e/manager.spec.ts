@@ -431,6 +431,33 @@ test.describe.serial('did-manager-service UI', () => {
     });
     expect(withAlias.data.didDocument.alsoKnownAs).toContain('https://example.org/profile/alice');
 
+    // Standalone deliberately resyncs rather than persisting chain-specific
+    // wallet caches. Exercise restart, explicit join and a new transaction.
+    await page.goto(`${env.baseUrl}/wallet`);
+    await clickAndWaitForJsonResponse(page, '#closeSession', (url, method) =>
+      method === 'POST' && url.pathname === '/api/session/close');
+    await env.restart();
+    await page.goto(`${env.baseUrl}/wallet`);
+    // Seed custody is deliberately in-memory only: explicitly re-supply the
+    // public fixture seed after process restart rather than persisting it.
+    await page.selectOption('#seedMode', 'provided');
+    await page.fill('#seed', env.fundedSeed);
+    await page.fill('#passphrase', 'midnight-dev-passphrase');
+    const restored = await clickAndWaitForOperationResult<any>(page, '#startSession', (url, method) =>
+      method === 'POST' && url.pathname === '/api/session/start');
+    expect(restored.status.connection.reusedPersistedState).toBe(false);
+    await page.goto(`${env.baseUrl}/did`);
+    const address = did.split(':').at(-1)!;
+    await expect(page.locator(`#contractAddressSelect option[value="${address}"]`)).toBeAttached();
+    await page.selectOption('#contractAddressSelect', address);
+    await clickAndWaitForOperationResult(page, '#join', (url, method) =>
+      method === 'POST' && url.pathname === '/api/did/join');
+    expect((await waitForDidDocument(page, payload => payload?.data?.didDocument?.id === did)).data.didDocument.id).toBe(did);
+    await page.fill('#akaValue', 'https://example.org/profile/after-restart');
+    await clickAndWaitForOperationResult(page, '#akaAdd', (url, method) =>
+      method === 'POST' && url.pathname === '/api/did/also-known-as');
+    await waitForDidDocument(page, payload => payload?.data?.didDocument?.alsoKnownAs?.includes('https://example.org/profile/after-restart'));
+
     await clickAndWaitForOperationResult(page, '#deactivate', (url, method) => {
       return method === 'POST' && url.pathname === '/api/did/deactivate';
     });
