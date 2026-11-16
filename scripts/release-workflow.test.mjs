@@ -55,7 +55,7 @@ function checkWorkflow(w, c) {
   assert.deepEqual(steps[0].with, { ref: "${{ github.sha }}", "persist-credentials": false });
   assert.equal(steps[0].uses, "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
   assert.equal(steps[1].uses, "actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38");
-  assert.deepEqual(steps[1].with, { "node-version": "24" });
+  assert.deepEqual(steps[1].with, { "node-version": "24", "package-manager-cache": false });
   assert.equal(steps[2].id, "meta");
   assert.equal(steps[2].run, "node scripts/release-context.mjs resolve");
   assert.equal(steps[2].env, undefined);
@@ -130,6 +130,9 @@ test("unsafe workflow mutations are rejected: triggers, source, tags/latest, ide
     (w) => { w.jobs.release.if = "always()"; },
     (w) => { w.jobs.release.steps[0].with.ref = "develop"; },
     (w) => { w.jobs.release.steps[0].with["persist-credentials"] = true; },
+    (w) => { delete w.jobs.release.steps[1].with["package-manager-cache"]; },
+    (w) => { w.jobs.release.steps[1].with["package-manager-cache"] = true; },
+    (w) => { w.jobs.release.steps[1].with.cache = "npm"; },
     (w) => { w.jobs.release.env.GITHUB_SHA = "attacker"; },
     (w) => { w.jobs.release.steps[6].run = "true"; },
     (w) => { w.jobs.release.steps[8].env.RELEASE_CONTEXT = "{}"; },
