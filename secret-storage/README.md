@@ -47,7 +47,8 @@ Reusable encrypted secret storage for Midnight DID key lifecycle operations.
 | Library | Used for | Why it matters |
 |---|---|---|
 | `@midnight-ntwrk/wallet-sdk-hd` | Seed-to-HD derivation | Provides Midnight-compatible account/role/index key derivation primitives |
-| `@midnight-ntwrk/ledger-v8` | Jubjub math and field constraints | Used for Jubjub-compatible signing/verification and ledger representability checks |
+| `@midnightntwrk/ledger-v9` | Ledger9 Compact-field constraints | Supplies the field bound used for ledger representability checks |
+| `@midnight-ntwrk/midnight-did-jubjub-schnorr` | Jubjub primitives | Owning-package public-key derivation, signature encoding, signing and verification |
 
 ## External Libraries Used
 
@@ -155,12 +156,18 @@ HD derivation is intentionally deterministic and curve-aware:
 2. Initialize `HDWallet.fromSeed(seed)`.
 3. Derive the Midnight metadata key at:
    - account: `account ?? 0`
-   - role: `Roles.Metadata`
+   - role: fixed numeric `4` (the existing secret-storage metadata slot)
    - index: `index ?? 0`
 4. Expand that metadata key with HKDF-SHA256 using:
    - salt: `midnight-did-secret-storage-v1`
    - info: `midnight-did:key:v1:<kty>:<crv>:<account>:<index>:<candidate>`
 5. Convert the 32-byte HKDF output into the curve-specific private key format.
+
+HD SDK4 renamed the former metadata role. This package deliberately freezes
+numeric role `4`, preserving the existing `m/44'/2400'/account'/4/index` derivation
+path instead of relying on the removed `Roles.Metadata` name or selecting a new
+wallet role. This keeps existing key bytes stable; it is not a change to wallet
+key-role policy.
 
 The `candidate` value is part of the derivation contract. It is used when the first deterministic output does not yield a ledger-compatible public key. The file-backed store retries candidates until it finds a compatible key.
 
@@ -219,11 +226,11 @@ Primary entry points:
 | Step | Function(s) | Package / primitive | Source file |
 |---|---|---|---|
 | Seed validation and parsing | `SeedSchema`, `parseSeed`, `seedToBuffer` | `zod`, Node buffer handling | `src/seed.ts` |
-| HD metadata derivation | `deriveMetadataKey` | `@midnight-ntwrk/wallet-sdk-hd` (`HDWallet`, `Roles.Metadata`) | `src/hd-derivation.ts` |
+| HD metadata derivation | `deriveMetadataKey` | `@midnight-ntwrk/wallet-sdk-hd` (`HDWallet`, fixed numeric role `4`) | `src/hd-derivation.ts` |
 | Deterministic expansion | `hkdfSync` with salt/info contract | Node `crypto` HKDF | `src/hd-derivation.ts` |
 | Curve-specific private shaping | `deriveCurvePrivateFromSeed`, `normalizeP256Private` | bigint math + curve rules | `src/hd-derivation.ts` |
 | Key import/materialization | `importCurveKey` | Node crypto + Jubjub logic | `src/curve-support.ts` |
-| Ledger representability checks | `isPublicJwkLedgerCompatible` | `@midnight-ntwrk/ledger-v8` field constraints | `src/curve-support.ts` |
+| Ledger representability checks | `isPublicJwkLedgerCompatible` | `@midnightntwrk/ledger-v9` field constraints | `src/curve-support.ts` |
 | Retry for representable key | `FileSecretStore.deriveKeyFromSeed` candidate loop | File store orchestration | `src/file-secret-store.ts` |
 
 ### Examples

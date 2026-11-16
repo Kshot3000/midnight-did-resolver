@@ -41,11 +41,16 @@ Single-user web backend + minimal UI for managing Midnight DID lifecycle operati
 
 Persisted state includes:
 
-- shared seed
 - funding address
 - known contract addresses
 - current joined/deployed contract
 - profile-specific Midnight private-state storage
+
+The shared seed is held only in memory for the current manager process; it is
+not written to `manager-session.json`. Back it up separately and supply it again
+after a service restart. `reuse` selects a seed already loaded for the current
+profile in the running process, not a seed recovered from disk. The secret-store
+passphrase must also be entered again after every restart.
 
 ## Run
 
@@ -124,12 +129,12 @@ Shared infrastructure:
 1. Start `./start-manager.sh --preprod`.
 2. Open `/wallet`.
 3. Choose a seed mode:
-   - `reuse` to use a previously stored seed
+   - `reuse` to use a seed already loaded for this profile in the current manager process
    - `provided` to paste an existing seed
    - `generated` to create a new seed for funding
 4. Click `Prepare funding`.
 5. Copy the `Prepared funding address` from the UI.
-6. If the response includes `generatedSeed`, keep it and reuse it to start the session. The UI copies it into the seed field, switches the mode to `provided`, and stores the shared seed + wallet address in the manager session file.
+6. If the response includes `generatedSeed`, back it up separately and use it to start the session. The UI copies it into the seed field and switches the mode to `provided`. The seed remains in process memory; the manager session file stores the funding address and profile metadata, not the seed. After a service restart, select `provided` and enter the same seed again.
 7. Top up the address with `tNight`.
 8. After funds arrive, click `Start Session`.
 9. Confirm the wallet balances are visible on the wallet page:
@@ -165,17 +170,26 @@ Structure (simplified):
 │  ├─ manager-session.json
 │  ├─ manager-secrets.json
 │  ├─ wallet-state/<seedHash6>/
-│  └─ midnight-level-db/<seedHash16>/
+│  └─ midnight-level-db-ledger9/<seedHash16>/
 └─ backup/wallet-state/<network>/<profile>/<timestamp>/
 ```
 
 Stored data:
 
-- profile/session metadata (seed presence, funding address, contract addresses)
+- profile/session metadata (funding address, contract addresses, preferences; no shared seed)
 - encrypted secret-store data (`manager-secrets.json`)
 - persisted wallet snapshots for reusable networks
 - Midnight private state DB scoped by network/profile/seed
 - migration/restore backups of wallet snapshots
+
+Ledger9/SDK5 wallet snapshots include transaction-lifecycle state. Incompatible
+snapshots are quarantined under
+`backup/wallet-state/<network>/<profile>/<seedHash6>-incompatible-<uuid>/`
+before a fresh sync; failure to preserve the old snapshot stops the unlock.
+The new `midnight-level-db-ledger9` namespace leaves any legacy
+`midnight-level-db` directory untouched; it does not migrate an old DID or its
+private-state history automatically. Wallet snapshots and private-state files
+are not a backup of the shared seed.
 
 Treat this directory as sensitive local state and do not commit it.
 
