@@ -112,21 +112,41 @@ GitHub Container Registry images are published via
 - `ghcr.io/midnightntwrk/midnight-did-resolver-service:<version>`
 - `ghcr.io/midnightntwrk/midnight-did-manager-service:<version>`
 
-The workflow is configured for:
+The channel-aware workflow proposed for `develop` in
+[#165](https://github.com/midnightntwrk/midnight-did-resolver/issues/165) is
+**manual-only**, with required `channel` and full `version` inputs:
 
-- Push to semantic tags matching `v*` from commits on `main` (for example
-  `v0.1.0-rc.2` or `v0.1.0`).
-- Manual publication from `main` with an optional `version` input.
-- Multi-platform publish (`linux/amd64`, `linux/arm64`).
-- Exact-version tags for release candidates; only stable versions update
-  `latest`.
-- Registry provenance and SBOM attestations for both images.
+| Channel | Source branch | Version and image tags |
+| --- | --- | --- |
+| `rc` | Exact `develop` or `main` | `X.Y.Z-rc.N` only; never `latest` |
+| `release` | Exact `main` only | `X.Y.Z` and `latest` |
 
-For the third release candidate, the manual release command is:
+`N` must be positive with no leading zeros. The base must match the root,
+resolver, manager and secret-storage package versions. No `v` prefix, build
+metadata or implicit version fallback is accepted; the full tag must fit 128
+characters. Both images use the same version and exact dispatched source SHA,
+with default `linux/amd64,linux/arm64` builds, provenance/SBOM attestations and
+keyless digest signatures verified against the exact source workflow identity.
+
+Examples **only after separate release approval and installation of the changed
+workflow at the selected ref**:
 
 ```bash
-gh workflow run "Release application Docker images" --ref main -f version=0.1.0-rc.3
+gh workflow run release-docker.yml --ref develop -f channel=rc -f version=0.1.0-rc.3
+gh workflow run release-docker.yml --ref main -f channel=release -f version=0.1.0
 ```
+
+Pushes, merges and `v*` tags do not publish from refs containing the changed
+workflow. Until approved promotion updates `main`/the default branch, its older
+workflow may still have tag-triggered/main-only behavior; this PR does not deploy
+all branch copies or authorize testing them by dispatch/tag creation. Existing
+artifacts remain untouched. Source eligibility is not release authorization, and
+the security/reconciliation gates in #109/#137 remain outstanding.
+
+See [Publishing](docs-site/guide/publishing.md#docker-publication-policy) for the
+transition, input contract, stable promotion/approval prerequisites and exact
+source/digest/signature verification commands. Non-publishing regression checks:
+`npm run test:release-policy`.
 
 ## Configuration
 

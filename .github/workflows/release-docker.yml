@@ -1,42 +1,80 @@
 name: Release application Docker images
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
+      channel:
+        description: "Publication channel (source eligibility is not release approval)"
+        required: true
+        type: choice
+        default: rc
+        options: [rc, release]
       version:
-        description: "Image version (defaults to workspace package version)."
-        required: false
-        default: ""
+        description: "Full image version: X.Y.Z-rc.N for rc, X.Y.Z for release"
+        required: true
+        type: string
       platforms:
         description: "Buildx target platforms"
         required: false
         default: "linux/amd64,linux/arm64"
+        type: string
 
 permissions:
   contents: read
 
-env:
-  PLATFORMS: "linux/amd64,linux/arm64"
-
 jobs:
+  validate-dispatch:
+    name: Validate manual publication source
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Require exact event, channel and branch ref
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF: ${{ github.ref }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          [[ "${EVENT_NAME}" == workflow_dispatch && "${REF_TYPE}" == branch ]]
+          case "${CHANNEL}:${REF}" in
+            rc:refs/heads/develop|rc:refs/heads/main|release:refs/heads/main) ;;
+            *) echo "::error::Unsupported publication channel/source ref"; exit 1 ;;
+          esac
+
   release:
     name: Build and push resolver + manager images
+    needs: validate-dispatch
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' &&
+      ((inputs.channel == 'rc' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')) ||
+       (inputs.channel == 'release' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
       packages: write
       id-token: write
+    env:
+      INPUT_CHANNEL: ${{ inputs.channel }}
+      INPUT_VERSION: ${{ inputs.version }}
+      INPUT_PLATFORMS: ${{ inputs.platforms }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout exact dispatched source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.4.0
+        with:
+          node-version: "24"
+
+      - name: Resolve and validate publication context
+        id: meta
+        run: node scripts/release-context.mjs resolve
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
@@ -51,75 +89,11 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve release metadata
-        id: meta
+      - name: Revalidate actual resolver publication inputs
+        id: resolver_context
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_PLATFORMS: ${{ inputs.platforms }}
-          INPUT_VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          VERSION="${INPUT_VERSION}"
-
-          if [[ "${EVENT_NAME}" == "push" ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
-
-          if [[ -z "${VERSION}" ]]; then
-            VERSION="$(node -p "require('./package.json').version")"
-          fi
-
-          if [[ -z "${VERSION}" ]]; then
-            echo "Unable to resolve image version" >&2
-            exit 1
-          fi
-
-          if [[ ! "${VERSION}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            echo "Invalid semantic image version: ${VERSION}" >&2
-            exit 1
-          fi
-
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          if [[ "${VERSION%%-*}" != "${PACKAGE_VERSION}" ]]; then
-            echo "Image version ${VERSION} does not match workspace base version ${PACKAGE_VERSION}" >&2
-            exit 1
-          fi
-
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" && "${GITHUB_REF_NAME}" != "main" ]]; then
-            echo "Manual publication must run from main, not ${GITHUB_REF_NAME}" >&2
-            exit 1
-          fi
-
-          if [[ "${EVENT_NAME}" == "push" ]] && ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
-            echo "Release tag ${GITHUB_REF_NAME} does not point to a commit on main" >&2
-            exit 1
-          fi
-
-          PLATFORMS="${INPUT_PLATFORMS:-${PLATFORMS}}"
-          if [[ ! "${PLATFORMS}" =~ ^linux/(amd64|arm64)(,linux/(amd64|arm64))*$ ]]; then
-            echo "Unsupported build platforms: ${PLATFORMS}" >&2
-            exit 1
-          fi
-
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "platforms=${PLATFORMS}" >> "${GITHUB_OUTPUT}"
-          echo "resolver_image=ghcr.io/midnightntwrk/midnight-did-resolver-service:${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "manager_image=ghcr.io/midnightntwrk/midnight-did-manager-service:${VERSION}" >> "${GITHUB_OUTPUT}"
-
-          {
-            echo "resolver_tags<<EOF"
-            echo "ghcr.io/midnightntwrk/midnight-did-resolver-service:${VERSION}"
-            if [[ "${VERSION}" != *-* ]]; then
-              echo "ghcr.io/midnightntwrk/midnight-did-resolver-service:latest"
-            fi
-            echo "EOF"
-            echo "manager_tags<<EOF"
-            echo "ghcr.io/midnightntwrk/midnight-did-manager-service:${VERSION}"
-            if [[ "${VERSION}" != *-* ]]; then
-              echo "ghcr.io/midnightntwrk/midnight-did-manager-service:latest"
-            fi
-            echo "EOF"
-          } >> "${GITHUB_OUTPUT}"
+          RELEASE_CONTEXT: ${{ steps.meta.outputs.context }}
+        run: node scripts/release-context.mjs boundary
 
       - name: Build and push resolver image
         id: build_resolver
@@ -127,11 +101,21 @@ jobs:
         with:
           context: .
           file: did-resolver-service/Dockerfile
-          platforms: ${{ steps.meta.outputs.platforms }}
-          tags: ${{ steps.meta.outputs.resolver_tags }}
+          platforms: ${{ steps.resolver_context.outputs.platforms }}
+          tags: ${{ steps.resolver_context.outputs.resolver_tags }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.resolver_context.outputs.source_sha }}
+            org.opencontainers.image.source=https://github.com/midnightntwrk/midnight-did-resolver
+            org.opencontainers.image.version=${{ steps.resolver_context.outputs.version }}
           push: true
           provenance: mode=max
           sbom: true
+
+      - name: Revalidate actual manager publication inputs
+        id: manager_context
+        env:
+          RELEASE_CONTEXT: ${{ steps.meta.outputs.context }}
+        run: node scripts/release-context.mjs boundary
 
       - name: Build and push manager image
         id: build_manager
@@ -139,64 +123,38 @@ jobs:
         with:
           context: .
           file: did-manager-service/Dockerfile
-          platforms: ${{ steps.meta.outputs.platforms }}
-          tags: ${{ steps.meta.outputs.manager_tags }}
+          platforms: ${{ steps.manager_context.outputs.platforms }}
+          tags: ${{ steps.manager_context.outputs.manager_tags }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.manager_context.outputs.source_sha }}
+            org.opencontainers.image.source=https://github.com/midnightntwrk/midnight-did-resolver
+            org.opencontainers.image.version=${{ steps.manager_context.outputs.version }}
           push: true
           provenance: mode=max
           sbom: true
 
-      - name: Validate published image digests
-        env:
-          RESOLVER_DIGEST: ${{ steps.build_resolver.outputs.digest }}
-          MANAGER_DIGEST: ${{ steps.build_manager.outputs.digest }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${RESOLVER_DIGEST}" ]]; then
-            echo "::error::Resolver build did not produce an image digest" >&2
-            exit 1
-          fi
-          if [[ -z "${MANAGER_DIGEST}" ]]; then
-            echo "::error::Manager build did not produce an image digest" >&2
-            exit 1
-          fi
-
       - name: Install Cosign
         uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
+        with:
+          cosign-release: v2.6.1
 
-      - name: Sign published image digests
+      - name: Revalidate and sign published image digests
         env:
-          RESOLVER_IMAGE: ${{ steps.meta.outputs.resolver_image }}
+          RELEASE_CONTEXT: ${{ steps.meta.outputs.context }}
           RESOLVER_DIGEST: ${{ steps.build_resolver.outputs.digest }}
-          MANAGER_IMAGE: ${{ steps.meta.outputs.manager_image }}
           MANAGER_DIGEST: ${{ steps.build_manager.outputs.digest }}
-        run: |
-          set -euo pipefail
-          cosign sign --yes "${RESOLVER_IMAGE}@${RESOLVER_DIGEST}"
-          cosign sign --yes "${MANAGER_IMAGE}@${MANAGER_DIGEST}"
+        run: node scripts/release-context.mjs sign
 
-      - name: Verify published image signatures
+      - name: Revalidate and verify published image signatures
         env:
-          RESOLVER_IMAGE: ${{ steps.meta.outputs.resolver_image }}
+          RELEASE_CONTEXT: ${{ steps.meta.outputs.context }}
           RESOLVER_DIGEST: ${{ steps.build_resolver.outputs.digest }}
-          MANAGER_IMAGE: ${{ steps.meta.outputs.manager_image }}
           MANAGER_DIGEST: ${{ steps.build_manager.outputs.digest }}
-        run: |
-          set -euo pipefail
-          IDENTITY="^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/release-docker\.yml@refs/(heads/main|tags/v.*)$"
-          ISSUER="https://token.actions.githubusercontent.com"
-          cosign verify "${RESOLVER_IMAGE}@${RESOLVER_DIGEST}" \
-            --certificate-identity-regexp "${IDENTITY}" \
-            --certificate-oidc-issuer "${ISSUER}"
-          cosign verify "${MANAGER_IMAGE}@${MANAGER_DIGEST}" \
-            --certificate-identity-regexp "${IDENTITY}" \
-            --certificate-oidc-issuer "${ISSUER}"
+        run: node scripts/release-context.mjs verify
 
-      - name: Print image refs and digests
+      - name: Print exact source and image digests
         env:
-          MANAGER_IMAGE: ${{ steps.meta.outputs.manager_image }}
-          MANAGER_DIGEST: ${{ steps.build_manager.outputs.digest }}
-          RESOLVER_IMAGE: ${{ steps.meta.outputs.resolver_image }}
+          RELEASE_CONTEXT: ${{ steps.meta.outputs.context }}
           RESOLVER_DIGEST: ${{ steps.build_resolver.outputs.digest }}
-        run: |
-          echo "resolver=${RESOLVER_IMAGE}@${RESOLVER_DIGEST}"
-          echo "manager=${MANAGER_IMAGE}@${MANAGER_DIGEST}"
+          MANAGER_DIGEST: ${{ steps.build_manager.outputs.digest }}
+        run: node scripts/release-context.mjs summary
