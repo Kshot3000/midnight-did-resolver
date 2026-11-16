@@ -37,6 +37,9 @@ jobs:
       - name: Test Playwright browser configuration and runner
         run: npm run test:playwright-browser
 
+      - name: Test non-publishing release policy
+        run: npm run test:release-policy
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
